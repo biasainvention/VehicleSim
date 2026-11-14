@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural Car & Truck CAD Builder (World Gizmo, Center Origin, Rename Part)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #eee; overflow: hidden; height: 100vh; display: flex; }
+        
+        #sidebar-left { width: 320px; background: #252526; border-right: 1px solid #3f3f46; display: flex; flex-direction: column; height: 100%; z-index: 10; }
+        #viewport-container { flex: 1; position: relative; height: 100%; background: #1e1e1e; }
+        #sidebar-right { width: 340px; background: #252526; border-left: 1px solid #3f3f46; display: flex; flex-direction: column; height: 100%; z-index: 10; }
+
+        .panel-header { padding: 12px 16px; background: #2d2d2d; border-bottom: 1px solid #3f3f46; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #3b82f6; display: flex; justify-content: space-between; align-items: center; }
+        .panel-content { flex: 1; overflow-y: auto; padding: 12px; }
+
+        .category-title { font-size: 11px; text-transform: uppercase; color: #a1a1aa; margin: 12px 0 6px 0; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .category-title:first-child { margin-top: 0; }
+        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .btn { background: #333337; color: #e4e4e7; border: 1px solid #45454d; padding: 8px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; text-align: left; transition: all 0.15s ease; display: flex; align-items: center; gap: 6px; }
+        .btn:hover { background: #3b82f6; color: #fff; border-color: #60a5fa; }
+        .btn-mode { font-weight: bold; justify-content: center; background: #27272a; }
+        .btn-mode.active { background: #2563eb; color: #fff; border-color: #60a5fa; }
+        .btn-danger { background: #7f1d1d; border-color: #991b1b; }
+        .btn-danger:hover { background: #dc2626; border-color: #ef4444; }
+        .btn-action { background: #1e40af; border-color: #2563eb; width: 100%; text-align: center; justify-content: center; font-weight: bold; margin-top: 8px; }
+        
+        .control-group { margin-bottom: 10px; background: #1e1e1e; padding: 8px; border-radius: 4px; border: 1px solid #333; }
+        .control-label { font-size: 11px; color: #a1a1aa; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .input-row { display: flex; gap: 6px; align-items: center; }
+        .input-row label { font-size: 11px; width: 15px; color: #888; text-align: center; }
+        input[type="text"], input[type="number"], select { background: #2d2d2d; border: 1px solid #3f3f46; color: #fff; padding: 4px 6px; font-size: 12px; border-radius: 3px; width: 100%; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: #3b82f6; outline: none; }
+        input[type="color"] { background: none; border: none; width: 100%; height: 26px; cursor: pointer; }
+
+        #code-export { width: 100%; height: 130px; background: #111; color: #4ade80; font-family: 'Courier New', Courier, monospace; font-size: 11px; padding: 8px; border: 1px solid #333; border-radius: 4px; resize: none; white-space: pre; }
+
+        .overlay-info { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.85); padding: 8px 14px; border-radius: 4px; border: 1px solid #444; font-size: 12px; pointer-events: none; line-height: 1.5; }
+        .overlay-info span { color: #ef4444; font-weight: bold; }
+
+        .top-toolbar { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 5; }
+        .btn-toolbar { background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+        .btn-toolbar:hover { background: #3b82f6; }
+
+        .gizmo-toolbar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.9); border: 1px solid #444; padding: 6px; border-radius: 6px; display: flex; gap: 6px; z-index: 5; }
+        
+        .tree-node { padding: 4px 6px; font-size: 12px; cursor: pointer; border-radius: 3px; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center; }
+        .tree-node:hover { background: #333; }
+        .tree-node.selected { background: #1e40af; color: white; }
+        .tree-node-input { background: #1e1e1e; color: #fff; border: 1px solid #3b82f6; border-radius: 2px; padding: 1px 4px; font-size: 11px; width: 100%; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+</head>
+<body>
+
+    <!-- SIDEBAR KIRI -->
+    <div id="sidebar-left">
+        <div class="panel-header">Library Komponen & Primitives</div>
+        <div class="panel-content">
+            
+            <div class="category-title">📝 Generate dari Text</div>
+            <textarea id="text-input" placeholder="box name=Sasis pos=0,0.8,0 size=6,0.4,1.6 color=#222222&#10;cylinder pos=2,0.6,1.2 rot=90,0,0 size=1.2,0.4,1.2&#10;(atau tempel kode bake / JSON)" style="width:100%;height:120px;background:#111;color:#e4e4e7;border:1px solid #333;border-radius:4px;font:11px 'Courier New',monospace;padding:6px;resize:vertical;user-select:text;white-space:pre;"></textarea>
+            <label style="font-size:11px;color:#a1a1aa;display:flex;gap:6px;align-items:center;margin:6px 0;"><input type="checkbox" id="text-replace" checked> Ganti scene lama</label>
+            <div class="btn-grid">
+                <button class="btn" onclick="loadFromText()">⚙️ Generate</button>
+                <button class="btn" onclick="fillTextExample()">📄 Isi Contoh</button>
+            </div>
+            <div id="text-status" style="font-size:11px;color:#a1a1aa;margin:6px 0 10px 0;white-space:pre-wrap;user-select:text;"></div>
+
+            <div class="category-title">0. Geometri Dasar (Primitives)</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('primBox')">🧊 Box / Kubus</button>
+                <button class="btn" onclick="addPart('primSphere')">⚽ Bola (Sphere)</button>
+                <button class="btn" onclick="addPart('primCylinder')">🥫 Silinder / Tabung</button>
+                <button class="btn" onclick="addPart('primCone')">🔺 Kerucut</button>
+                <button class="btn" onclick="addPart('primTorus')">🍩 Donat (Torus)</button>
+                <button class="btn" onclick="addPart('primRing')">🥏 Ring 2D</button>
+                <button class="btn" onclick="addPart('primPlane')">📄 Bidang (Plane)</button>
+                <button class="btn" onclick="addPart('primWedge')">📐 Baji / Wedge</button>
+            </div>
+
+            <div class="category-title">1. Sasis & Kabin</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('chassisStandard')">📦 Sasis Std</button>
+                <button class="btn" onclick="addPart('chassisLong')">📦 Sasis Panjang</button>
+                <button class="btn" onclick="addPart('cabinMain')">🚛 Kabin Utama</button>
+                <button class="btn" onclick="addPart('cabinOffroad')">🚜 Kabin Offroad</button>
+            </div>
+
+            <div class="category-title">2. Roda & Suspensi</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('axleFixed')">⚙️ Axle Belakang</button>
+                <button class="btn" onclick="addPart('axleSteer')">🎯 Axle Steering</button>
+                <button class="btn" onclick="addPart('suspension')">🛞 Leaf Spring</button>
+            </div>
+
+            <div class="category-title">3. Payload / Muatan</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('payloadBox')">📦 Box Cargo</button>
+                <button class="btn" onclick="addPart('payloadBed')">🛻 Bak Truk</button>
+                <button class="btn" onclick="addPart('payloadTank')">⛽ Tanki BBM</button>
+                <button class="btn" onclick="addPart('payloadMixer')">🔄 Tangki Molen</button>
+                <button class="btn" onclick="addPart('payloadFifthWheel')">🔘 Fifth Wheel</button>
+                <button class="btn" onclick="addPart('payloadCrane')">🏗️ Crane Towing</button>
+            </div>
+
+            <div class="category-title">4. Bagian Bergerak</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('wiper')">🧹 Wiper Kaca</button>
+                <button class="btn" onclick="addPart('hydOutrigger')">🦵 Hidrolik Kaki</button>
+                <button class="btn" onclick="addPart('hydDumper')">🏗️ Hidrolik Dump</button>
+            </div>
+
+            <div class="category-title">5. Aksesoris Tambahan</div>
+            <div class="btn-grid">
+                <button class="btn" onclick="addPart('bumper')">🛡️ Bumper</button>
+                <button class="btn" onclick="addPart('sideTank')">🛢️ Tanki Samping</button>
+                <button class="btn" onclick="addPart('mirror')">🪞 Spion</button>
+                <button class="btn" onclick="addPart('antenna')">📡 Antena</button>
+                <button class="btn" onclick="addPart('wing')">🦅 Sirip/Sayap</button>
+                <button class="btn" onclick="addPart('grille')">🏁 Grill Depan</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- VIEWPORT -->
+    <div id="viewport-container">
+        <div class="overlay-info">
+            Grid: <b>1 Kotak = 1 Meter</b> | Depan: <span style="color:#ef4444;">+X</span><br>
+            Gizmo: <b>World Space (selalu sejajar dunia, origin = center objek)</b><br>
+            Shortcut: <b>G/R/S</b> | <b>Ctrl+A</b> (Pilih Semua) | <b>Ctrl+D</b> (Duplicate) | <b>Ctrl+Z</b> (Undo)
+        </div>
+
+        <div class="top-toolbar">
+            <button class="btn-toolbar" onclick="undoAction()">↩️ Undo</button>
+            <button class="btn-toolbar" onclick="redoAction()">🔁 Redo</button>
+            <button class="btn-toolbar" onclick="saveProject()">💾 Save JSON</button>
+            <button class="btn-toolbar" onclick="document.getElementById('file-loader').click()">📂 Load JSON</button>
+            <input type="file" id="file-loader" style="display:none" accept=".json" onchange="loadProject(event)">
+        </div>
+
+        <div class="gizmo-toolbar">
+            <button class="btn btn-mode active" id="btn-translate" onclick="setGizmoMode('translate')">↔️ Geser (G)</button>
+            <button class="btn btn-mode" id="btn-rotate" onclick="setGizmoMode('rotate')">🔄 Rotate (R)</button>
+            <button class="btn btn-mode" id="btn-scale" onclick="setGizmoMode('scale')">📐 Scale (S)</button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR KANAN -->
+    <div id="sidebar-right">
+        <div class="panel-header">Inspector & Bake Code</div>
+        <div class="panel-content">
+            
+            <div class="category-title">Objek Terpilih & Hierarchy</div>
+            <div id="tree-container" style="max-height: 110px; overflow-y: auto; background:#111; padding:4px; border-radius:4px; margin-bottom:8px;"></div>
+
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <button class="btn btn-action" style="background:#2563eb;" onclick="duplicateSelected()">📋 Duplicate</button>
+                <button class="btn btn-action" style="background:#059669;" onclick="groupSelected()">🔗 Group</button>
+                <button class="btn btn-action" style="background:#d97706;" onclick="ungroupSelected()">🔓 Ungroup</button>
+            </div>
+            <button class="btn btn-danger btn-action" style="margin-top:0; margin-bottom:10px;" onclick="deleteSelected()">🗑️ Hapus Objek</button>
+
+            <div style="display:flex; gap:6px; margin-bottom:4px;">
+                <button class="btn btn-action" style="margin-top:0;background:#7c3aed;" onclick="selectAll()">🌐 Pilih Semua</button>
+                <button class="btn btn-action" style="margin-top:0;background:#0d9488;" onclick="snapToFloor()">⬇️ Snap ke Lantai</button>
+            </div>
+            <div style="font-size:10px;color:#71717a;margin-bottom:10px;">Setelah "Pilih Semua" (Ctrl+A), gizmo Geser/Rotate/Scale (G/R/S) berlaku untuk seluruh objek sekaligus. Double-click nama di Tree untuk rename.</div>
+
+            <div id="inspector-panel">
+                <div class="category-title">Identitas & Transformasi</div>
+                
+                <!-- RENAMING FIELD -->
+                <div class="control-group">
+                    <div class="control-label">Nama Part</div>
+                    <input type="text" id="partName" placeholder="Nama part..." onchange="updateNameFromInput()">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Posisi (X, Y, Z)</div>
+                    <div class="input-row">
+                        <label>X</label><input type="number" step="0.1" id="posX" onchange="updateTransformFromInput()">
+                        <label>Y</label><input type="number" step="0.1" id="posY" onchange="updateTransformFromInput()">
+                        <label>Z</label><input type="number" step="0.1" id="posZ" onchange="updateTransformFromInput()">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Rotasi (X, Y, Z) °</div>
+                    <div class="input-row">
+                        <label>X</label><input type="number" step="5" id="rotX" onchange="updateTransformFromInput()">
+                        <label>Y</label><input type="number" step="5" id="rotY" onchange="updateTransformFromInput()">
+                        <label>Z</label><input type="number" step="5" id="rotZ" onchange="updateTransformFromInput()">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Skala (X, Y, Z)</div>
+                    <div class="input-row">
+                        <label>X</label><input type="number" step="0.1" value="1" id="scaleX" onchange="updateTransformFromInput()">
+                        <label>Y</label><input type="number" step="0.1" value="1" id="scaleY" onchange="updateTransformFromInput()">
+                        <label>Z</label><input type="number" step="0.1" value="1" id="scaleZ" onchange="updateTransformFromInput()">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Warna Material</div>
+                    <input type="color" id="partColor" value="#3b82f6" onchange="updateMaterial()">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Chamfer / Fillet (semua edge)</div>
+                    <select id="bevelMode" onchange="updateBevelFromInput()" style="margin-bottom:6px;">
+                        <option value="none">Tidak ada</option>
+                        <option value="chamfer">Chamfer (potong miring)</option>
+                        <option value="fillet">Fillet (melengkung)</option>
+                    </select>
+                    <div class="input-row">
+                        <label style="width:42px;">Ukuran</label><input type="number" step="0.01" min="0" value="0.1" id="bevelSize" onchange="updateBevelFromInput()">
+                        <label style="width:42px;">Segmen</label><input type="number" step="1" min="1" max="12" value="4" id="bevelSeg" onchange="updateBevelFromInput()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="category-title">Hasil Export Bake Function</div>
+            <textarea id="code-export" readonly></textarea>
+            <button class="btn btn-action" onclick="copyBakeCode()">📋 Salin Kode Bake</button>
+
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('viewport-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e1e1e);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(10, 8, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+        orbitControls.target.set(0, 1.5, 0);
+        orbitControls.update();
+
+        // --- GIZMO SETUP ---
+        const transformControls = new THREE.TransformControls(camera, renderer.domElement);
+        transformControls.setSpace('world');
+        scene.add(transformControls);
+
+        const pivot = new THREE.Object3D();
+        pivot.name = 'GizmoPivot';
+        scene.add(pivot);
+
+        let gizmoMode = 'translate';
+        let drag = null;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        scene.add(dirLight);
+
+        scene.add(new THREE.GridHelper(30, 30, 0x3b82f6, 0x444444));
+        scene.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-14, 0.05, 0), 5, 0xef4444, 1, 0.5));
+
+        let assemblyGroup = new THREE.Group();
+        assemblyGroup.name = "VehicleAssembly";
+        scene.add(assemblyGroup);
+
+        let selectedObjects = [];
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        let historyStack = [];
+        let redoStack = [];
+
+        // --- CENTER OBJEK ---
+        function getLocalBox(obj) {
+            obj.updateMatrixWorld(true);
+            const inv = obj.matrixWorld.clone().invert();
+            const box = new THREE.Box3();
+            const tmp = new THREE.Box3();
+            const m4 = new THREE.Matrix4();
+            obj.traverse(m => {
+                if (m.isMesh && m.geometry) {
+                    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+                    m4.multiplyMatrices(inv, m.matrixWorld);
+                    tmp.copy(m.geometry.boundingBox).applyMatrix4(m4);
+                    box.union(tmp);
+                }
+            });
+            return box;
+        }
+
+        function getWorldCenter(obj) {
+            const box = getLocalBox(obj);
+            if (box.isEmpty()) return obj.getWorldPosition(new THREE.Vector3());
+            return obj.localToWorld(box.getCenter(new THREE.Vector3()));
+        }
+
+        function syncPivot() {
+            const obj = selectedObjects[0];
+            if (!obj) return;
+            pivot.position.copy(getSelectionCenter());
+            pivot.quaternion.identity();
+            pivot.scale.set(1, 1, 1);
+            pivot.updateMatrixWorld(true);
+        }
+
+        transformControls.addEventListener('dragging-changed', (event) => {
+            orbitControls.enabled = !event.value;
+            const obj = selectedObjects[0];
+            if (event.value) {
+                if (!obj) return;
+                recordState();
+                drag = {
+                    pos: obj.position.clone(),
+                    quat: obj.quaternion.clone(),
+                    scale: obj.scale.clone(),
+                    center: getSelectionCenter(),
+                    items: selectedObjects.map(o => ({
+                        o, pos: o.position.clone(), quat: o.quaternion.clone(),
+                        scale: o.scale.clone(), c: getWorldCenter(o)
+                    }))
+                };
+            } else {
+                drag = null;
+                if (obj) {
+                    syncPivot();
+                    updateInspectorValues(obj);
+                    generateBakeCode();
+                }
+            }
+        });
+
+        transformControls.addEventListener('objectChange', applyPivotToSelection);
+
+        function recordState() {
+            const state = assemblyGroup.children.map(child => serializeObject(child));
+            historyStack.push(JSON.stringify(state));
+            if (historyStack.length > 30) historyStack.shift();
+            redoStack = [];
+        }
+
+        function serializeObject(obj) {
+            return {
+                name: obj.name,
+                type: obj.userData.partType || 'custom',
+                isWheel: obj.userData.isWheel || false,
+                steerable: obj.userData.steerable || false,
+                isMoving: obj.userData.isMoving || false,
+                position: [obj.position.x, obj.position.y, obj.position.z],
+                rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+                scale: [obj.scale.x, obj.scale.y, obj.scale.z],
+                color: getObjectColor(obj),
+                bevel: obj.userData.bevel || null,
+                customBox: obj.userData.customBox || null
+            };
+        }
+
+        function getObjectColor(obj) {
+            let col = '#3b82f6';
+            obj.traverse(child => {
+                if (child.isMesh && child.material && child.material.color) {
+                    col = '#' + child.material.color.getHexString();
+                }
+            });
+            return col;
+        }
+
+        function undoAction() {
+            if (historyStack.length === 0) return;
+            redoStack.push(JSON.stringify(assemblyGroup.children.map(child => serializeObject(child))));
+            restoreState(JSON.parse(historyStack.pop()));
+        }
+
+        function redoAction() {
+            if (redoStack.length === 0) return;
+            historyStack.push(JSON.stringify(assemblyGroup.children.map(child => serializeObject(child))));
+            restoreState(JSON.parse(redoStack.pop()));
+        }
+
+        function restoreState(stateArray) {
+            clearSelection();
+            while(assemblyGroup.children.length > 0) assemblyGroup.remove(assemblyGroup.children[0]);
+            stateArray.forEach(data => {
+                const part = createPartGeometry(data.type);
+                part.name = data.name;
+                part.position.set(...data.position);
+                part.rotation.set(...data.rotation);
+                part.scale.set(...data.scale);
+                part.userData.isWheel = data.isWheel;
+                part.userData.steerable = data.steerable;
+                part.userData.isMoving = data.isMoving;
+                if (data.customBox) setCustomBox(part, data.customBox);
+                if (data.bevel) applyBevel(part, data.bevel.mode, data.bevel.r, data.bevel.seg);
+                part.traverse(child => { if (child.isMesh && child.material) child.material.color.set(data.color); });
+                assemblyGroup.add(part);
+            });
+            updateTreeUI();
+            generateBakeCode();
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (transformControls.dragging || transformControls.axis) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(assemblyGroup.children, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj.parent && obj.parent !== assemblyGroup && obj.parent.type === 'Group') {
+                    obj = obj.parent;
+                }
+                selectObject(obj);
+            }
+        });
+
+        function selectObject(obj) {
+            clearSelection();
+            selectedObjects = [obj];
+
+            syncPivot();
+            transformControls.attach(pivot);
+
+            updateInspectorValues(obj);
+            updateTreeUI();
+        }
+
+        function clearSelection() {
+            selectedObjects = [];
+            drag = null;
+            transformControls.detach();
+            updateTreeUI();
+        }
+
+        function setGizmoMode(mode) {
+            gizmoMode = mode;
+            transformControls.setMode(mode);
+            document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'g' || e.key === 'G') setGizmoMode('translate');
+            if (e.key === 'r' || e.key === 'R') setGizmoMode('rotate');
+            if (e.key === 's' || e.key === 'S') setGizmoMode('scale');
+            if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); duplicateSelected(); }
+            if (e.ctrlKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); }
+            if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undoAction(); }
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+        });
+
+        function centerPivot(group) {
+            const box = new THREE.Box3().setFromObject(group);
+            if (box.isEmpty()) return;
+            
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+
+            group.children.forEach(child => {
+                child.position.sub(center);
+            });
+            group.position.add(center);
+        }
+
+        function createPartGeometry(type) {
+            const group = new THREE.Group();
+            group.userData = { partType: type };
+            const matStd = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+            const matDark = matStd(0x222222);
+            const matMetal = matStd(0x9ca3af);
+            const matGlass = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.1, opacity: 0.7, transparent: true });
+
+            switch(type) {
+                case 'primBox':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Box"; break;
+                case 'primSphere':
+                    group.add(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Sphere"; break;
+                case 'primCylinder':
+                    group.add(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2, 16), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Cylinder"; break;
+                case 'primCone':
+                    group.add(new THREE.Mesh(new THREE.ConeGeometry(1, 2, 16), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Cone"; break;
+                case 'primTorus':
+                    group.add(new THREE.Mesh(new THREE.TorusGeometry(1, 0.3, 16, 32), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Torus"; break;
+                case 'primRing':
+                    group.add(new THREE.Mesh(new THREE.RingGeometry(0.5, 1, 16), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Ring"; break;
+                case 'primPlane':
+                    group.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Plane"; break;
+                case 'primWedge':
+                    const wedgeGeo = new THREE.CylinderGeometry(0, 1, 2, 3);
+                    group.add(new THREE.Mesh(wedgeGeo, matStd(0x3b82f6)));
+                    group.position.set(0, 1, 0); group.name = "Primitive_Wedge"; break;
+
+                case 'chassisStandard':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, 1.6), matDark));
+                    group.position.set(0, 0.8, 0); group.name = "Chassis_Std"; break;
+                case 'chassisLong':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, 1.6), matDark));
+                    group.position.set(0, 0.8, 0); group.name = "Chassis_Long"; break;
+                case 'cabinMain':
+                    const main = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 2.2), matStd(0x3b82f6));
+                    const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 2.22), matGlass); win.position.set(0.5, 0.4, 0);
+                    group.add(main, win); group.position.set(1.5, 2.1, 0); group.name = "Cabin_Main"; break;
+                case 'cabinOffroad':
+                    const cMain = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2, 2.4), matStd(0x3f6212));
+                    const cRoof = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 2.5), matDark); cRoof.position.y = 1;
+                    group.add(cMain, cRoof); group.position.set(1.2, 2.2, 0); group.name = "Cabin_Offroad"; break;
+                case 'axleFixed':
+                case 'axleSteer':
+                    const isSteer = type === 'axleSteer';
+                    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.2), matMetal); axle.rotation.x = Math.PI / 2;
+                    const wGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 16); wGeo.rotateX(Math.PI / 2);
+                    const wL = new THREE.Mesh(wGeo, matDark); wL.position.z = 1.1;
+                    const wR = new THREE.Mesh(wGeo, matDark); wR.position.z = -1.1;
+                    group.add(axle, wL, wR); group.position.set(0, 0.6, 0);
+                    group.userData.isWheel = true; group.userData.steerable = isSteer; group.name = isSteer ? "Axle_Steer" : "Axle_Fixed"; break;
+                case 'payloadBox':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.4, 2.3), matStd(0xe5e7eb)));
+                    group.position.set(-1.8, 2.4, 0); group.name = "Payload_Box"; break;
+                case 'payloadBed':
+                    const bBase = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.2, 2.3), matDark); bBase.position.y = -0.5;
+                    const bL = new THREE.Mesh(new THREE.BoxGeometry(5.5, 1, 0.1), matStd(0xd97706)); bL.position.z = 1.1;
+                    const bR = bL.clone(); bR.position.z = -1.1;
+                    group.add(bBase, bL, bR); group.position.set(-1.8, 1.6, 0); group.name = "Payload_Bed"; break;
+                case 'payloadTank':
+                    const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 5.5, 16), matMetal); tank.rotation.z = Math.PI / 2;
+                    group.add(tank); group.position.set(-1.8, 2.2, 0); group.name = "Payload_Tanker"; break;
+                case 'payloadMixer':
+                    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.3, 4.5, 12), matStd(0xd97706)); drum.rotation.z = Math.PI / 2.3;
+                    group.add(drum); group.position.set(-1.8, 2.4, 0); group.name = "Payload_Mixer"; break;
+                case 'payloadFifthWheel':
+                    group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.15, 8), matDark));
+                    group.position.set(-1.5, 1.1, 0); group.name = "Payload_FifthWheel"; break;
+                case 'payloadCrane':
+                    const crB = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 1.2), matDark); crB.position.set(0.8, -0.45, 0);
+                    const crA = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 0.3), matStd(0xd97706)); crA.rotation.z = Math.PI / 6;
+                    group.add(crB, crA); group.position.set(-1.8, 2.6, 0); group.name = "Payload_Crane"; break;
+                case 'wiper':
+                    const wp = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05), matDark); wp.rotation.z = Math.PI / 4;
+                    group.add(wp); group.position.set(2.4, 2.5, 0.5); group.userData.isMoving = true; group.name = "Wiper"; break;
+                case 'hydOutrigger':
+                    group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.2), matMetal));
+                    group.position.set(0, 0.6, 1.3); group.userData.isMoving = true; group.name = "Hydraulic_Outrigger"; break;
+                case 'hydDumper':
+                    const cy = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8), matMetal); cy.rotation.z = -Math.PI / 4;
+                    group.add(cy); group.position.set(-0.5, 1.8, 0); group.userData.isMoving = true; group.name = "Hydraulic_Dumper"; break;
+                case 'bumper':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 2.4), matDark));
+                    group.position.set(2.8, 0.8, 0); group.name = "Bumper_Front"; break;
+                case 'sideTank':
+                    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.8, 12), matMetal); st.rotation.x = Math.PI / 2;
+                    group.add(st); group.position.set(0, 0.8, 1.1); group.name = "Side_Tank"; break;
+                case 'mirror':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.2), matDark));
+                    group.position.set(2.3, 2.5, 1.25); group.name = "Side_Mirror"; break;
+                case 'antenna':
+                    group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5), matMetal));
+                    group.position.set(2.4, 3.8, 1.1); group.name = "Antenna"; break;
+                case 'wing':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 2.4), matStd(0xef4444)));
+                    group.position.set(0.5, 3.4, 0); group.name = "Aero_Wing"; break;
+                case 'grille':
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 1.6), matDark));
+                    group.position.set(2.76, 1.8, 0); group.name = "Front_Grille"; break;
+                default:
+                    group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), matStd(0xd97706)));
+                    group.position.set(0, 1, 0); group.name = type;
+            }
+            centerPivot(group);
+            return group;
+        }
+
+        // ===== SELEKSI =====
+        function getSelectionCenter() {
+            if (selectedObjects.length === 1) return getWorldCenter(selectedObjects[0]);
+            const box = new THREE.Box3();
+            selectedObjects.forEach(o => { o.updateMatrixWorld(true); box.expandByObject(o); });
+            return box.getCenter(new THREE.Vector3());
+        }
+
+        function selectAll() {
+            const all = assemblyGroup.children.slice();
+            if (!all.length) return;
+            clearSelection();
+            selectedObjects = all;
+            syncPivot();
+            transformControls.attach(pivot);
+            updateInspectorValues(all[0]);
+            updateTreeUI();
+        }
+
+        function applyPivotToSelection() {
+            if (!drag || !drag.items) return;
+            const c0 = drag.center;
+
+            if (gizmoMode === 'translate') {
+                const delta = pivot.position.clone().sub(c0);
+                drag.items.forEach(it => it.o.position.copy(it.pos).add(delta));
+
+            } else if (gizmoMode === 'rotate') {
+                const dq = pivot.quaternion.clone();
+                drag.items.forEach(it => {
+                    it.o.quaternion.copy(dq).multiply(it.quat);
+                    it.o.position.copy(it.pos).sub(c0).applyQuaternion(dq).add(c0);
+                });
+
+            } else if (gizmoMode === 'scale') {
+                const ratio = [pivot.scale.x, pivot.scale.y, pivot.scale.z].map(v => Math.max(v, 0.001));
+                const comp = ['x', 'y', 'z'];
+                drag.items.forEach(it => {
+                    const o = it.o;
+                    const localDirs = [
+                        new THREE.Vector3(1, 0, 0).applyQuaternion(it.quat),
+                        new THREE.Vector3(0, 1, 0).applyQuaternion(it.quat),
+                        new THREE.Vector3(0, 0, 1).applyQuaternion(it.quat)
+                    ];
+                    const ns = [it.scale.x, it.scale.y, it.scale.z];
+                    for (let i = 0; i < 3; i++) {
+                        let best = 0, bestVal = -1;
+                        for (let j = 0; j < 3; j++) {
+                            const v = Math.abs(localDirs[j][comp[i]]);
+                            if (v > bestVal) { bestVal = v; best = j; }
+                        }
+                        ns[best] *= ratio[i];
+                    }
+                    o.quaternion.copy(it.quat);
+                    o.scale.set(ns[0], ns[1], ns[2]);
+                    o.position.copy(it.pos);
+                    o.updateMatrixWorld(true);
+                    
+                    const target = new THREE.Vector3(
+                        c0.x + (it.c.x - c0.x) * ratio[0],
+                        c0.y + (it.c.y - c0.y) * ratio[1],
+                        c0.z + (it.c.z - c0.z) * ratio[2]
+                    );
+                    const curCenter = getWorldCenter(o);
+                    o.position.add(target).sub(curCenter);
+                    o.updateMatrixWorld(true);
+                });
+            }
+
+            selectedObjects.forEach(o => o.updateMatrixWorld(true));
+            if (selectedObjects[0]) updateInspectorValues(selectedObjects[0]);
+            generateBakeCode();
+        }
+
+        // ===== SNAP KE LANTAI =====
+        function getAssemblyMinY() {
+            let minY = Infinity;
+            const v = new THREE.Vector3();
+            assemblyGroup.updateMatrixWorld(true);
+            assemblyGroup.traverse(m => {
+                if (m.isMesh && m.geometry && m.geometry.attributes.position) {
+                    const pa = m.geometry.attributes.position;
+                    for (let i = 0; i < pa.count; i++) {
+                        v.fromBufferAttribute(pa, i).applyMatrix4(m.matrixWorld);
+                        if (v.y < minY) minY = v.y;
+                    }
+                }
+            });
+            return minY;
+        }
+
+        function snapToFloor() {
+            if (!assemblyGroup.children.length) return;
+            const minY = getAssemblyMinY();
+            if (!isFinite(minY)) return;
+            recordState();
+            assemblyGroup.children.forEach(o => { o.position.y -= minY; });
+            assemblyGroup.updateMatrixWorld(true);
+            if (selectedObjects.length) { syncPivot(); updateInspectorValues(selectedObjects[0]); }
+            generateBakeCode();
+        }
+
+        // ===== LABEL X Y Z PADA GIZMO =====
+        function makeLabelSprite(text, color) {
+            const cv = document.createElement('canvas');
+            cv.width = cv.height = 64;
+            const cx = cv.getContext('2d');
+            cx.font = 'bold 44px Segoe UI, Arial, sans-serif';
+            cx.textAlign = 'center';
+            cx.textBaseline = 'middle';
+            cx.lineWidth = 6;
+            cx.strokeStyle = '#000';
+            cx.strokeText(text, 32, 34);
+            cx.fillStyle = color;
+            cx.fillText(text, 32, 34);
+            const mat = new THREE.SpriteMaterial({
+                map: new THREE.CanvasTexture(cv), depthTest: false, depthWrite: false,
+                transparent: true, sizeAttenuation: false
+            });
+            const s = new THREE.Sprite(mat);
+            s.scale.set(0.04, 0.04, 1);
+            s.renderOrder = 999;
+            s.visible = false;
+            scene.add(s);
+            return s;
+        }
+        const gizmoLabels = [makeLabelSprite('X', '#ff5a5a'), makeLabelSprite('Y', '#5aff5a'), makeLabelSprite('Z', '#5a9cff')];
+        const _lblBox = new THREE.Box3();
+
+        function updateGizmoLabels() {
+            const show = selectedObjects.length > 0 && !!transformControls.object;
+            gizmoLabels.forEach(s => { s.visible = show; });
+            if (!show) return;
+
+            const dist = camera.position.distanceTo(pivot.position);
+            const ext = [dist * 0.14, dist * 0.14, dist * 0.14];
+            try {
+                const grp = (transformControls._gizmo || transformControls.children[0]).gizmo[gizmoMode];
+                ['X', 'Y', 'Z'].forEach((nm, i) => {
+                    _lblBox.makeEmpty();
+                    grp.children.forEach(ch => { if (ch.name === nm) _lblBox.expandByObject(ch); });
+                    if (_lblBox.isEmpty()) return;
+                    if (gizmoMode === 'rotate') {
+                        const sz = _lblBox.getSize(new THREE.Vector3());
+                        ext[i] = Math.max(sz.x, sz.y, sz.z) / 2;
+                    } else {
+                        ext[i] = Math.max(_lblBox.max.getComponent(i) - pivot.position.getComponent(i), 0.01);
+                    }
+                });
+            } catch (e) {}
+
+            const p = pivot.position;
+            const k = [ext[0] * 1.1 + dist * 0.02, ext[1] * 1.1 + dist * 0.02, ext[2] * 1.1 + dist * 0.02];
+            gizmoLabels[0].position.set(p.x + k[0], p.y, p.z);
+            gizmoLabels[1].position.set(p.x, p.y + k[1], p.z);
+            gizmoLabels[2].position.set(p.x, p.y, p.z + k[2]);
+        }
+
+        // ===== GENERATE OBJEK DARI TEXT =====
+        const KNOWN_TYPES = ['primBox','primSphere','primCylinder','primCone','primTorus','primRing','primPlane','primWedge',
+            'chassisStandard','chassisLong','cabinMain','cabinOffroad','axleFixed','axleSteer','suspension',
+            'payloadBox','payloadBed','payloadTank','payloadMixer','payloadFifthWheel','payloadCrane',
+            'wiper','hydOutrigger','hydDumper','bumper','sideTank','mirror','antenna','wing','grille'];
+        const SHAPE_ALIAS = {
+            box: 'primBox', cube: 'primBox', kubus: 'primBox',
+            sphere: 'primSphere', bola: 'primSphere',
+            cylinder: 'primCylinder', cyl: 'primCylinder', silinder: 'primCylinder',
+            cone: 'primCone', kerucut: 'primCone',
+            torus: 'primTorus', ring: 'primRing', plane: 'primPlane', wedge: 'primWedge'
+        };
+
+        function setCustomBox(part, dims) {
+            let done = false;
+            part.traverse(m => {
+                if (!done && m.isMesh) {
+                    m.geometry = new THREE.BoxGeometry(dims[0], dims[1], dims[2]);
+                    m.userData.boxDims = dims.slice();
+                    done = true;
+                }
+            });
+            part.userData.customBox = dims.slice();
+        }
+
+        function parseNums(s) {
+            return (s.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) || []).map(Number);
+        }
+
+        function parseTextLine(raw) {
+            const line = raw.replace(/\/\/.*$/, '').trim();
+            if (!line || /^(function|const|let|var|return|\}|\{|\/\*|\*)/.test(line)) return false;
+            let m;
+            const grab = (src, key) => {
+                const r = src.match(new RegExp('\\b' + key + '\\s*:\\s*(-?[\\d.]+)'));
+                return r ? parseFloat(r[1]) : 0;
+            };
+
+            if ((m = line.match(/wheels\.push\s*\(\s*\{(.*)\}\s*\)/))) {
+                return { type: grab(m[1], 'steer') ? 'axleSteer' : 'axleFixed', pos: [grab(m[1], 'x'), grab(m[1], 'y'), grab(m[1], 'z')] };
+            }
+            if ((m = line.match(/movingParts\.push\s*\(\s*\{(.*)\}\s*\)/))) {
+                const t = m[1].match(/type\s*:\s*'([^']+)'/);
+                return t ? { type: t[1], pos: [grab(m[1], 'x'), grab(m[1], 'y'), grab(m[1], 'z')] } : null;
+            }
+            const tq = line.match(/^\w+\s*\(([^'"]*)['"]([A-Za-z_]\w*)['"]/);
+            if (tq && KNOWN_TYPES.includes(tq[2])) {
+                const nums = parseNums(tq[1].replace(/[A-Za-z_]\w*/g, ' '));
+                if (nums.length >= 3) {
+                    const o = { type: tq[2], pos: nums.slice(0, 3) };
+                    const rr = line.match(/rot\s*:\s*\[([^\]]*)\]/);
+                    if (rr) { const rv = parseNums(rr[1]); if (rv.length >= 3) { o.rot = rv.slice(0, 3); o.rotRad = true; } }
+                    const sz = line.match(/size\s*:\s*\[([^\]]*)\]/);
+                    if (sz) { const sv = parseNums(sz[1]); if (sv.length >= 3) o.size = sv.slice(0, 3); }
+                    const sc = line.match(/scale\s*:\s*\[([^\]]*)\]/);
+                    if (sc) { const sv = parseNums(sc[1]); if (sv.length >= 3) o.scale = sv.slice(0, 3); }
+                    const bv = line.match(/bevel\s*:\s*\{\s*mode\s*:\s*'(\w+)'\s*,\s*r\s*:\s*([\d.]+)\s*,\s*seg\s*:\s*(\d+)/);
+                    if (bv) o.bevel = { mode: bv[1], r: parseFloat(bv[2]), seg: parseInt(bv[3]) };
+                    return o;
+                }
+            }
+
+            if ((m = line.match(/^([\w.]+)\s*\((.*)\)\s*;?$/))) {
+                const args = m[2];
+                const hx = args.match(/#([0-9a-fA-F]{6})\b/) || args.match(/0x([0-9a-fA-F]{6})\b/);
+                const clean = args.replace(/['"][^'"]*['"]/g, ' ').replace(/#[0-9a-fA-F]{3,8}\b/g, ' ')
+                    .replace(/0x[0-9a-fA-F]+/gi, ' ').replace(/[A-Za-z_]\w*/g, ' ');
+                const nums = parseNums(clean);
+                if (nums.length >= 6) {
+                    return { type: 'primBox', pos: nums.slice(0, 3), size: nums.slice(3, 6), color: hx ? '#' + hx[1] : null, name: m[1] };
+                }
+                return null;
+            }
+
+            const toks = line.split(/\s+/);
+            const shape = toks[0].toLowerCase();
+            const type = SHAPE_ALIAS[shape] || KNOWN_TYPES.find(t => t.toLowerCase() === shape);
+            if (!type) return null;
+            const o = { type };
+            const bare = [];
+            toks.slice(1).forEach(t => {
+                const eq = t.indexOf('=');
+                if (eq < 0) { const n = parseFloat(t); if (!isNaN(n)) bare.push(n); return; }
+                const k = t.slice(0, eq).toLowerCase(), v = t.slice(eq + 1);
+                const nums = () => v.split(',').map(Number);
+                if (k === 'pos' || k === 'p') o.pos = nums();
+                else if (k === 'size' || k === 's') o.size = nums();
+                else if (k === 'rot' || k === 'r') o.rot = nums();
+                else if (k === 'scale') o.scale = nums();
+                else if (k === 'color' || k === 'c') o.color = v;
+                else if (k === 'name' || k === 'n') o.name = v;
+                else if (k === 'radius') o.radius = parseFloat(v);
+                else if (k === 'height' || k === 'h') o.height = parseFloat(v);
+                else if (k === 'bevel') {
+                    const [md, rr, sg] = v.split(':');
+                    o.bevel = { mode: md === 'chamfer' ? 'chamfer' : 'fillet', r: parseFloat(rr) || 0.1, seg: parseInt(sg) || 4 };
+                }
+            });
+            if (bare.length >= 3 && !o.pos) o.pos = bare.slice(0, 3);
+            if (bare.length >= 6 && !o.size) o.size = bare.slice(3, 6);
+            ['size', 'scale'].forEach(k => {
+                if (o[k] && o[k].length === 1) o[k] = [o[k][0], o[k][0], o[k][0]];
+            });
+            ['pos', 'rot', 'size', 'scale'].forEach(k => {
+                if (o[k] && (o[k].length < 3 || o[k].some(isNaN))) delete o[k];
+            });
+            return o;
+        }
+
+        function createTextPart(o) {
+            if (!KNOWN_TYPES.includes(o.type)) return null;
+            const part = createPartGeometry(o.type);
+
+            if (o.type === 'primBox' && o.size) {
+                setCustomBox(part, o.size.map(v => Math.max(Math.abs(v), 0.01)));
+            } else if (o.size || o.radius !== undefined) {
+                const bb = getLocalBox(part).getSize(new THREE.Vector3());
+                if (o.type === 'primTorus' && !o.size) {
+                    const s = bb.x > 1e-6 ? (o.radius * 2) / bb.x : 1;
+                    part.scale.set(s, s, s);
+                } else {
+                    const r = o.radius;
+                    const size = o.size || [r * 2, o.height !== undefined ? o.height : r * 2, r * 2];
+                    part.scale.set(
+                        bb.x > 1e-6 ? size[0] / bb.x : 1,
+                        bb.y > 1e-6 ? size[1] / bb.y : 1,
+                        bb.z > 1e-6 ? size[2] / bb.z : 1
+                    );
+                }
+            }
+            if (o.scale) part.scale.set(o.scale[0], o.scale[1], o.scale[2]);
+
+            if (o.pos) part.position.set(o.pos[0], o.pos[1], o.pos[2]);
+            if (o.rot) part.rotation.set(...o.rot.map(v => o.rotRad ? v : v * Math.PI / 180));
+            if (o.color) {
+                try {
+                    part.traverse(c => {
+                        if (c.isMesh && c.material && !c.material.transparent) c.material.color.set(o.color);
+                    });
+                } catch (e) {}
+            }
+            if (o.name) part.name = o.name;
+            if (o.bevel) applyBevel(part, o.bevel.mode, o.bevel.r, o.bevel.seg);
+            return part;
+        }
+
+        function loadFromText() {
+            const txt = document.getElementById('text-input').value.trim();
+            const status = document.getElementById('text-status');
+            if (!txt) { status.textContent = 'Teks kosong.'; return; }
+            const replace = document.getElementById('text-replace').checked;
+
+            if (txt[0] === '[') {
+                try {
+                    const data = JSON.parse(txt);
+                    recordState();
+                    const cur = replace ? [] : assemblyGroup.children.map(serializeObject);
+                    restoreState(cur.concat(data));
+                    status.textContent = 'JSON dimuat: ' + data.length + ' objek.';
+                } catch (e) {
+                    status.textContent = 'JSON tidak valid: ' + e.message;
+                }
+                return;
+            }
+
+            const specs = [], skipped = [];
+            txt.split(/\r?\n/).forEach((raw, i) => {
+                let o = null;
+                try { o = parseTextLine(raw); } catch (e) { o = null; }
+                if (o) specs.push(o);
+                else if (o === null) skipped.push('baris ' + (i + 1) + ': ' + raw.trim().slice(0, 50));
+            });
+
+            if (!specs.length) {
+                status.textContent = 'Tidak ada objek yang dikenali.' + (skipped.length ? '\n' + skipped.slice(0, 5).join('\n') : '');
+                return;
+            }
+
+            recordState();
+            clearSelection();
+            if (replace) while (assemblyGroup.children.length) assemblyGroup.remove(assemblyGroup.children[0]);
+            let made = 0;
+            specs.forEach(o => {
+                const part = createTextPart(o);
+                if (part) { assemblyGroup.add(part); made++; }
+            });
+            updateTreeUI();
+            generateBakeCode();
+            status.textContent = made + ' objek dibuat. Klik objek untuk mengedit.' +
+                (skipped.length ? '\nDilewati ' + skipped.length + ' baris:\n' + skipped.slice(0, 5).join('\n') : '');
+        }
+
+        function fillTextExample() {
+            document.getElementById('text-input').value =
+`// Satuan meter, rot dalam derajat
+// bentuk key=nilai: pos, size, rot, color, name, radius, height, bevel=fillet:r:seg / chamfer:r
+box name=Sasis pos=0,0.8,0 size=6,0.4,1.6 color=#222222
+box name=Kabin pos=2,2.1,0 size=2.5,2.2,2.2 color=#3b82f6 bevel=fillet:0.15:4
+box name=Bak pos=-1.3,2.0,0 size=3.4,1.6,2.3 color=#d97706 bevel=chamfer:0.1
+cylinder name=Roda1 pos=2,0.6,1.2 rot=90,0,0 size=1.2,0.4,1.2 color=#222222
+cylinder name=Roda2 pos=2,0.6,-1.2 rot=90,0,0 size=1.2,0.4,1.2 color=#222222
+cylinder name=Roda3 pos=-2,0.6,1.2 rot=90,0,0 size=1.2,0.4,1.2 color=#222222
+cylinder name=Roda4 pos=-2,0.6,-1.2 rot=90,0,0 size=1.2,0.4,1.2 color=#222222
+sphere name=Lampu pos=3.3,1.5,0.6 radius=0.15 color=#fde047`;
+            document.getElementById('text-status').textContent = 'Contoh diisi. Klik Generate.';
+        }
+
+        // ===== CHAMFER & FILLET =====
+        function makeBeveledBox(w, h, d, r, n, mode) {
+            const H = [w / 2, h / 2, d / 2];
+            r = Math.min(r, Math.min(w, h, d) / 2 * 0.999);
+            n = (mode === 'chamfer') ? 1 : Math.max(1, Math.floor(n));
+
+            const grids = H.map(hh => {
+                const a = [];
+                for (let i = 0; i <= n; i++) a.push(-hh + r * i / n);
+                for (let i = 0; i <= n; i++) a.push(hh - r + r * i / n);
+                return a;
+            });
+            const g = 2 * n + 2;
+            const pos = [], nor = [], idx = [];
+            const inner = [0, 0, 0], dir = [0, 0, 0];
+            let base = 0;
+
+            [[0, 1, 2], [1, 2, 0], [2, 0, 1]].forEach(([ui, vi, wi]) => {
+                [1, -1].forEach(sign => {
+                    for (let i = 0; i < g; i++) {
+                        for (let j = 0; j < g; j++) {
+                            const p = [0, 0, 0];
+                            p[ui] = grids[ui][i];
+                            p[vi] = grids[vi][j];
+                            p[wi] = sign * H[wi];
+                            let l2 = 0, l1 = 0;
+                            for (let k = 0; k < 3; k++) {
+                                const lim = H[k] - r;
+                                inner[k] = Math.max(-lim, Math.min(lim, p[k]));
+                                dir[k] = p[k] - inner[k];
+                                l2 += dir[k] * dir[k];
+                                l1 += Math.abs(dir[k]);
+                            }
+                            l2 = Math.sqrt(l2);
+                            for (let k = 0; k < 3; k++) {
+                                const scale = (mode === 'chamfer') ? r / l1 : r / l2;
+                                pos.push(inner[k] + dir[k] * scale);
+                                nor.push(dir[k] / l2);
+                            }
+                        }
+                    }
+                    for (let i = 0; i < g - 1; i++) {
+                        for (let j = 0; j < g - 1; j++) {
+                            const a = base + i * g + j, b = base + (i + 1) * g + j;
+                            const c = base + i * g + j + 1, d2 = base + (i + 1) * g + j + 1;
+                            if (sign === 1) idx.push(a, b, c, b, d2, c);
+                            else idx.push(a, c, b, b, c, d2);
+                        }
+                    }
+                    base += g * g;
+                });
+            });
+
+            let geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+            geo.setIndex(idx);
+            if (mode === 'chamfer') {
+                geo = geo.toNonIndexed();
+                geo.computeVertexNormals();
+            }
+            geo.computeBoundingBox();
+            return geo;
+        }
+
+        function applyBevel(obj, mode, r, seg) {
+            const off = (mode === 'none' || !(r > 0));
+            let count = 0;
+            obj.traverse(m => {
+                if (!m.isMesh) return;
+                if (!m.userData.boxDims) {
+                    if (m.geometry.type !== 'BoxGeometry') return;
+                    const gp = m.geometry.parameters;
+                    m.userData.boxDims = [gp.width, gp.height, gp.depth];
+                }
+                const [w, h, d] = m.userData.boxDims;
+                m.geometry = off ? new THREE.BoxGeometry(w, h, d) : makeBeveledBox(w, h, d, r, seg, mode);
+                count++;
+            });
+            obj.userData.bevel = (off || count === 0) ? null : { mode, r, seg };
+            return count;
+        }
+
+        function updateBevelFromInput() {
+            if (selectedObjects.length !== 1) return;
+            const obj = selectedObjects[0];
+            recordState();
+            const mode = document.getElementById('bevelMode').value;
+            const r = parseFloat(document.getElementById('bevelSize').value) || 0;
+            const seg = parseInt(document.getElementById('bevelSeg').value) || 4;
+            const count = applyBevel(obj, mode, r, seg);
+            if (count === 0 && mode !== 'none') {
+                alert('Objek ini tidak punya bentuk kotak (box) untuk di-chamfer/fillet.');
+                document.getElementById('bevelMode').value = 'none';
+            }
+            syncPivot();
+            generateBakeCode();
+        }
+
+        function bevelStr(part) {
+            const f = v => +v.toFixed(3);
+            let out = '';
+            const cb = part.userData.customBox;
+            if (cb) out += `, size:[${cb.map(f).join(',')}]`;
+            const sc = part.scale;
+            if (Math.abs(sc.x - 1) > 1e-3 || Math.abs(sc.y - 1) > 1e-3 || Math.abs(sc.z - 1) > 1e-3) {
+                out += `, scale:[${f(sc.x)},${f(sc.y)},${f(sc.z)}]`;
+            }
+            const b = part.userData.bevel;
+            if (b) out += `, bevel:{mode:'${b.mode}', r:${b.r}, seg:${b.seg}}`;
+            return out;
+        }
+
+        function addPart(type) {
+            recordState();
+            const part = createPartGeometry(type);
+            assemblyGroup.add(part);
+            selectObject(part);
+            generateBakeCode();
+        }
+
+        function duplicateSelected() {
+            if (selectedObjects.length === 1) {
+                recordState();
+                const original = selectedObjects[0];
+                const clone = original.clone(true);
+                clone.name = original.name + "_Copy";
+                clone.userData = JSON.parse(JSON.stringify(original.userData));
+                assemblyGroup.add(clone);
+                selectObject(clone);
+                generateBakeCode();
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedObjects.length > 0) {
+                recordState();
+                if (selectedObjects.length > 1 && !confirm('Hapus ' + selectedObjects.length + ' objek sekaligus?')) return;
+                selectedObjects.forEach(obj => assemblyGroup.remove(obj));
+                clearSelection();
+                generateBakeCode();
+            }
+        }
+
+        function groupSelected() {
+            if (selectedObjects.length < 1) return;
+            recordState();
+            const newGroup = new THREE.Group();
+            newGroup.name = "Group_" + Math.floor(Math.random() * 1000);
+            
+            const box = new THREE.Box3();
+            selectedObjects.forEach(obj => box.expandByObject(obj));
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+
+            selectedObjects.forEach(obj => {
+                obj.position.sub(center);
+                newGroup.add(obj);
+            });
+            newGroup.position.copy(center);
+            assemblyGroup.add(newGroup);
+            selectObject(newGroup);
+            generateBakeCode();
+        }
+
+        function ungroupSelected() {
+            if (selectedObjects.length === 1 && selectedObjects[0].type === 'Group') {
+                recordState();
+                const group = selectedObjects[0];
+                const parentPos = group.position.clone();
+                while (group.children.length > 0) {
+                    const child = group.children[0];
+                    child.position.add(parentPos);
+                    assemblyGroup.add(child);
+                }
+                assemblyGroup.remove(group);
+                clearSelection();
+                generateBakeCode();
+            }
+        }
+
+        function saveProject() {
+            const data = assemblyGroup.children.map(child => serializeObject(child));
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vehicle_cad_project.json';
+            a.click();
+        }
+
+        function loadProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    recordState();
+                    restoreState(data);
+                    alert('Proyek berhasil dimuat!');
+                } catch(err) {
+                    alert('Gagal memuat file JSON!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ===== RENAMING FUNCTIONS & INSPECTOR SYNC =====
+        function updateNameFromInput() {
+            if (selectedObjects.length === 1) {
+                const val = document.getElementById('partName').value.trim();
+                if (val) {
+                    recordState();
+                    selectedObjects[0].name = val;
+                    updateTreeUI();
+                    generateBakeCode();
+                }
+            }
+        }
+
+        function updateInspectorValues(obj) {
+            document.getElementById('partName').value = obj ? obj.name : '';
+            document.getElementById('posX').value = obj ? obj.position.x.toFixed(2) : 0;
+            document.getElementById('posY').value = obj ? obj.position.y.toFixed(2) : 0;
+            document.getElementById('posZ').value = obj ? obj.position.z.toFixed(2) : 0;
+            document.getElementById('rotX').value = obj ? Math.round(obj.rotation.x * 180 / Math.PI) : 0;
+            document.getElementById('rotY').value = obj ? Math.round(obj.rotation.y * 180 / Math.PI) : 0;
+            document.getElementById('rotZ').value = obj ? Math.round(obj.rotation.z * 180 / Math.PI) : 0;
+            document.getElementById('scaleX').value = obj ? obj.scale.x.toFixed(2) : 1;
+            document.getElementById('scaleY').value = obj ? obj.scale.y.toFixed(2) : 1;
+            document.getElementById('scaleZ').value = obj ? obj.scale.z.toFixed(2) : 1;
+            const bv = obj ? obj.userData.bevel : null;
+            document.getElementById('bevelMode').value = bv ? bv.mode : 'none';
+            if (bv) {
+                document.getElementById('bevelSize').value = bv.r;
+                document.getElementById('bevelSeg').value = bv.seg;
+            }
+        }
+
+        function updateTransformFromInput() {
+            if (selectedObjects.length === 1) {
+                recordState();
+                const obj = selectedObjects[0];
+                obj.position.set(
+                    parseFloat(document.getElementById('posX').value) || 0,
+                    parseFloat(document.getElementById('posY').value) || 0,
+                    parseFloat(document.getElementById('posZ').value) || 0
+                );
+                obj.rotation.set(
+                    (parseFloat(document.getElementById('rotX').value) || 0) * Math.PI / 180,
+                    (parseFloat(document.getElementById('rotY').value) || 0) * Math.PI / 180,
+                    (parseFloat(document.getElementById('rotZ').value) || 0) * Math.PI / 180
+                );
+                obj.scale.set(
+                    parseFloat(document.getElementById('scaleX').value) || 1,
+                    parseFloat(document.getElementById('scaleY').value) || 1,
+                    parseFloat(document.getElementById('scaleZ').value) || 1
+                );
+                obj.updateMatrixWorld(true);
+                syncPivot();
+                generateBakeCode();
+            }
+        }
+
+        function updateMaterial() {
+            const hex = document.getElementById('partColor').value;
+            if (selectedObjects.length === 1) {
+                recordState();
+                selectedObjects[0].traverse(child => {
+                    if (child.isMesh && child.material) child.material.color.set(hex);
+                });
+                generateBakeCode();
+            }
+        }
+
+        function updateTreeUI() {
+            const tree = document.getElementById('tree-container');
+            tree.innerHTML = '';
+            assemblyGroup.children.forEach(child => {
+                const div = document.createElement('div');
+                div.className = 'tree-node' + (selectedObjects.includes(child) ? ' selected' : '');
+                
+                const span = document.createElement('span');
+                span.innerText = child.name || "Part";
+                div.appendChild(span);
+
+                // Double Click untuk Inline Rename di Tree View
+                div.ondblclick = (e) => {
+                    e.stopPropagation();
+                    div.innerHTML = '';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'tree-node-input';
+                    input.value = child.name || '';
+                    div.appendChild(input);
+                    input.focus();
+                    input.select();
+
+                    const finishRename = () => {
+                        const newName = input.value.trim();
+                        if (newName && newName !== child.name) {
+                            recordState();
+                            child.name = newName;
+                            updateInspectorValues(child);
+                            generateBakeCode();
+                        }
+                        updateTreeUI();
+                    };
+
+                    input.onblur = finishRename;
+                    input.onkeydown = (ev) => {
+                        if (ev.key === 'Enter') finishRename();
+                        if (ev.key === 'Escape') updateTreeUI();
+                    };
+                };
+
+                div.onclick = (e) => { e.stopPropagation(); selectObject(child); };
+                tree.appendChild(div);
+            });
+        }
+
+        function generateBakeCode() {
+            let code = [];
+            code.push(`function bakeCustomVehicle(V) {`);
+            code.push(`  const s = V.spec || {}, c = C(V.color || '#3b82f6'), dark = C('#222222'), m = new Mesh();`);
+            code.push(`  const wheels = [], movingParts = [];\n`);
+
+            assemblyGroup.children.forEach(part => {
+                const p = part.position;
+                const r = part.rotation;
+                const partType = part.userData.partType || part.name;
+                const partName = part.name ? ` // ${part.name}` : '';
+
+                if (part.userData.isWheel) {
+                    code.push(`  wheels.push({ x: ${p.x.toFixed(2)}, y: ${p.y.toFixed(2)}, z: ${p.z.toFixed(2)}, steer: ${part.userData.steerable ? 1 : 0} });${partName}`);
+                } else if (part.userData.isMoving) {
+                    code.push(`  movingParts.push({ type: '${partType}', x: ${p.x.toFixed(2)}, y: ${p.y.toFixed(2)}, z: ${p.z.toFixed(2)} });${partName}`);
+                } else {
+                    code.push(`  bx(m, ${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}, '${partType}', rot:[${r.x.toFixed(2)},${r.y.toFixed(2)},${r.z.toFixed(2)}]${bevelStr(part)});${partName}`);
+                }
+            });
+
+            code.push(`\n  return { body: m.upload(), wheels, movingParts };`);
+            code.push(`}`);
+
+            document.getElementById('code-export').value = code.join('\n');
+        }
+
+        function copyBakeCode() {
+            const txt = document.getElementById('code-export');
+            txt.select();
+            document.execCommand('copy');
+            alert('Kode Bake Prosedural berhasil disalin!');
+        }
+
+        addPart('chassisStandard');
+        addPart('cabinMain');
+        addPart('axleSteer');
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateGizmoLabels();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

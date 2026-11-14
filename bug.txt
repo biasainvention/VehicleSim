@@ -1,0 +1,4 @@
+1. truk tangki suka nembus
+2. lampu merah suka nembus kontener belakang
+3. atap gaerbang tolnya kependekan
+4. tambah tombol untuk menggerakan wiper
