@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor Peta — Trailer Salatiga–Tengaran</title>
+<style>
+  :root { --bg:#0f141c; --panel:#171e29; --panel2:#1e2735; --line:#2c384b; --txt:#e6edf6; --mut:#8fa1b8; --acc:#38bdf8; --ok:#4ade80; --warn:#fb923c; --bad:#ef4444; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--txt); font: 13px/1.35 system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  body { display: grid; grid-template-rows: 48px 1fr 214px; }
+  button, select, input { font: inherit; color: var(--txt); }
+  button { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--acc); }
+  button.on, button.primary { background: #0c4a6e; border-color: var(--acc); }
+  button.danger { color: #fecaca; border-color: #7f1d1d; }
+  button:disabled { opacity: .4; cursor: default; }
+  input[type=text], input[type=number], select { background: #0e141d; border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; width: 100%; }
+  #top { display: flex; align-items: center; gap: 10px; padding: 0 10px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; white-space: nowrap; }
+  #top .logo { font-size: 15px; }
+  .seg { display: flex; gap: 4px; }
+  #top label { display: flex; align-items: center; gap: 4px; color: var(--mut); cursor: pointer; }
+  .grow { flex: 1; }
+  #top a { color: var(--acc); text-decoration: none; }
+  #saveState { color: var(--mut); }
+  #saveState.dirty { color: var(--warn); }
+  #main { display: grid; grid-template-columns: 200px 1fr 270px; min-height: 0; }
+  aside { background: var(--panel); overflow-y: auto; padding: 10px; }
+  #left { border-right: 1px solid var(--line); }
+  #right { border-left: 1px solid var(--line); }
+  h4 { margin: 12px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+  h4:first-child { margin-top: 0; }
+  .pal { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pal .it { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 4px; text-align: center; cursor: grab; user-select: none; }
+  .pal .it:hover { border-color: var(--acc); }
+  .pal .it.armed { border-color: var(--ok); background: #14532d; }
+  .pal .it .ic { font-size: 22px; display: block; }
+  .pal .it small { color: var(--mut); }
+  #roadList .ri { padding: 5px 7px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  #roadList .ri:hover { border-color: var(--line); }
+  #roadList .ri.on { background: #0c4a6e; border-color: var(--acc); }
+  #roadList .ri small { color: var(--mut); display: block; }
+  #mapwrap { position: relative; min-width: 0; min-height: 0; background: #1b2330; }
+  #map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  #status { position: absolute; left: 8px; bottom: 6px; background: #000a; padding: 3px 8px; border-radius: 5px; color: #cbd5e1; pointer-events: none; font-variant-numeric: tabular-nums; }
+  #hintbar { position: absolute; left: 8px; top: 8px; background: #000a; padding: 4px 9px; border-radius: 5px; color: #e2e8f0; pointer-events: none; max-width: 70%; }
+  #toast { position: absolute; right: 10px; top: 10px; background: #0c4a6e; border: 1px solid var(--acc); padding: 7px 12px; border-radius: 8px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 340px; }
+  #toast.show { opacity: 1; }
+  #legend { position: absolute; right: 8px; bottom: 6px; background: #000a; padding: 4px 8px; border-radius: 5px; font-size: 11px; color: #cbd5e1; pointer-events: none; }
+  #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 3px 0 8px; vertical-align: -1px; }
+  .row { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; margin: 5px 0; }
+  .row2 { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .row2 button { flex: 1 1 auto; }
+  .kv { display: flex; justify-content: space-between; color: var(--mut); margin: 2px 0; }
+  .kv b { color: var(--txt); font-weight: 600; }
+  .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 9px; margin-bottom: 10px; }
+  .hide { display: none !important; }
+  .muted { color: var(--mut); }
+  .help li { margin: 3px 0; }
+  .help ul { padding-left: 16px; margin: 4px 0; }
+  #bottom { background: var(--panel); border-top: 1px solid var(--line); display: grid; grid-template-rows: 26px 1fr; min-height: 0; }
+  #pfhead { display: flex; justify-content: space-between; padding: 4px 12px; color: var(--mut); }
+  #pfwrap { position: relative; min-height: 0; }
+  #profile { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .zrow { display: grid; grid-template-columns: 32px 1fr 32px; gap: 6px; align-items: center; }
+</style>
+</head>
+<body>
+<header id="top">
+  <span class="logo">🗺️ <b>Editor Peta</b></span>
+  <div class="seg" id="tools">
+    <button data-tool="select" class="on" title="Klik: pilih · seret: pindah · seret kosong: geser peta">🖱️ Pilih / Pindah</button>
+    <button data-tool="road" title="Klik di peta untuk menaruh titik jalan; klik kanan / dobel klik untuk selesai">🛣️ Gambar Jalan</button>
+    <button data-tool="bridge" title="Klik di peta untuk menaruh jembatan/terowongan; seret untuk memindah">🌉 Jembatan/Tunnel</button>
+    <button data-tool="delete" title="Klik objek / jalan / titik untuk menghapus">🗑️ Hapus</button>
+  </div>
+  <div class="seg"><button id="undo" title="Urungkan">↶ Undo</button><button id="redo" title="Ulangi">↷ Redo</button></div>
+  <div class="seg"><button id="zin">＋</button><button id="zout">－</button><button id="zfit">⛶ Pas</button></div>
+  <label><input type="checkbox" id="lyTerrain" checked> Tanah</label>
+  <label><input type="checkbox" id="lyDelta" checked> Timbunan/galian</label>
+  <label><input type="checkbox" id="lyObj" checked> Objek</label>
+  <label><input type="checkbox" id="lyLabel" checked> Nama</label>
+  <label><input type="checkbox" id="snap" checked> Rapat 1 m</label>
+  <span class="grow"></span>
+  <span id="saveState">memuat…</span>
+  <button id="save" class="primary">💾 Simpan peta ke JSON</button>
+  <a href="/vehicle-editor" target="_blank">🚗 Editor Kendaraan</a>
+  <a href="/" target="_blank">▶ Buka Game</a>
+  <button id="reset" class="danger">Reset semua</button>
+</header>
+
+<div id="main">
+  <aside id="left">
+    <h4>Objek — seret ke peta</h4>
+    <div class="pal" id="palette"></div>
+    <div class="muted" style="margin-top:6px">Atau klik objek lalu klik di peta (klik kanan = batal).</div>
+    <h4>Jalan buatan</h4>
+    <div id="roadList"></div>
+    <button id="newRoad" style="width:100%;margin-top:6px">＋ Jalan baru</button>
+  </aside>
+
+  <div id="mapwrap">
+    <canvas id="map"></canvas>
+    <div id="hintbar"></div>
+    <div id="toast"></div>
+    <div id="status"></div>
+    <div id="legend"></div>
+  </div>
+
+  <aside id="right">
+    <div id="pInfo" class="box help">
+      <b>Cara pakai (semua dengan mouse)</b>
+      <ul>
+        <li><b>Seret objek</b> dari panel kiri ke peta.</li>
+        <li><b>Klik</b> objek untuk memilih, <b>seret</b> untuk memindah, seret sudut untuk mengubah ukuran.</li>
+        <li><b>Gambar Jalan</b>: klik titik demi titik, klik kanan = selesai. Jalan otomatis melengkung (spline).</li>
+        <li>Seret <b>titik</b> untuk menggeser, seret <b>＋</b> di tengah ruas untuk menambah titik, klik kanan titik = hapus.</li>
+        <li><b>Tinggi jalan</b>: seret titik ke atas/bawah di grafik profil (bawah layar), atau roda mouse di grafik. Tanah ikut dinaikkan (timbunan) atau dikeruk (galian) otomatis.</li>
+        <li><b>Jalan bawaan</b>: klik jalannya → <b>Edit vektor</b>. Setelah itu titik, lebar, dan tinggi bisa diubah seperti jalan buatan; “Kembalikan ke asli” membatalkan.</li>
+        <li><b>Rumah misi</b> (garis oranye: Rumah Sopir, Puri Wahid, GT Boyolali) bisa diseret; pintu, jalan masuk, kendaraan parkir &amp; titik awal ikut pindah.</li>
+        <li>Roda mouse di peta = zoom · seret kosong / klik kanan = geser.</li>
+      </ul>
+      <div id="stats" class="muted"></div>
+    </div>
+
+    <div id="pObj" class="box hide">
+      <b id="oTitle"></b>
+      <div id="oLock" class="muted hide" style="margin:6px 0">🔒 Terhubung ke pintu / interior / misi — hanya bisa dilihat.</div>
+      <div id="oFields">
+        <div class="row"><span>Nama</span><input type="text" id="oLabel" maxlength="40"></div>
+        <div class="row" id="oColorRow"><span>Warna</span><input type="color" id="oColor" style="width:100%;height:28px;padding:0"></div>
+        <div class="row" id="oWRow"><span>Lebar (m)</span><input type="number" id="oW" step="1" min="1"></div>
+        <div class="row" id="oHRow"><span>Panjang (m)</span><input type="number" id="oH" step="1" min="1"></div>
+      </div>
+      <div class="row2">
+        <button id="oDup">⎘ Gandakan</button>
+        <button id="oRestore" class="hide">↺ Posisi asli</button>
+        <button id="oDel" class="danger">🗑️ Hapus</button>
+      </div>
+    </div>
+
+    <div id="pRoad" class="box hide">
+      <b id="rTitle">🛣️ Jalan buatan</b>
+      <div class="row" id="rNameRow"><span>Nama</span><input type="text" id="rName" maxlength="40"></div>
+      <div class="row" id="rKindRow"><span>Jenis</span>
+        <select id="rKind"><option value="local">Jalan lokal</option><option value="estate">Jalan perumahan</option><option value="access">Jalan akses</option></select></div>
+      <div class="row"><span>Lebar</span><div><input type="range" id="rW" min="4" max="20" step="0.5" style="width:100%"><span id="rWv" class="muted"></span></div></div>
+      <div class="kv"><span>Panjang</span><b id="rLen"></b></div>
+      <div class="kv"><span>Titik kontrol</span><b id="rPts"></b></div>
+      <div class="kv"><span>Tanjakan maks</span><b id="rGrade"></b></div>
+      <div class="kv"><span>Tinggi (min–maks)</span><b id="rZ"></b></div>
+      <div class="row2">
+        <button id="rFlat" title="Samakan tinggi semua titik dengan tanah asli">Ikut tanah asli</button>
+        <button id="rRamp" title="Tinggi berubah rata dari ujung awal ke ujung akhir">Landai merata</button>
+        <button id="rSmooth" title="Haluskan naik-turunnya">Haluskan</button>
+      </div>
+      <div class="row2"><button id="rDone" class="hide">✔ Selesai menggambar</button><button id="rDel" class="danger">🗑️ Hapus jalan</button></div>
+    </div>
+
+    <div id="pBridge" class="box hide">
+      <b>🌉 Jembatan / Terowongan</b>
+      <div class="kv"><span>ID</span><b id="brId" style="font-size:10px;color:var(--mut)"></b></div>
+      <div class="row"><span>Jalan atas</span><input type="text" id="brUpperRoad" placeholder="(opsional, nama jalan)" maxlength="40"></div>
+      <div class="row"><span>Jalan bawah</span><input type="text" id="brLowerRoad" placeholder="(opsional)" maxlength="40"></div>
+      <div class="row"><span>Panjang (m)</span><input type="number" id="brLen" min="10" max="2000" step="1"></div>
+      <div class="row"><span>Lebar atas (m)</span><input type="number" id="brWidth" min="4" max="40" step="0.5"></div>
+      <div class="row"><span>Lebar bawah (m)</span><input type="number" id="brLowerWidth" min="4" max="40" step="0.5"></div>
+      <div class="row"><span>Tinggi atas (m)</span><input type="number" id="brUpperZ" min="-100" max="2500" step="0.5"></div>
+      <div class="row"><span>Tinggi bawah (m)</span><input type="number" id="brLowerZ" min="-100" max="2500" step="0.5"></div>
+      <div class="row"><span>Sudut (°)</span><input type="number" id="brAngle" min="-180" max="180" step="1"></div>
+      <div class="row"><span>Sudut bawah (°)</span><input type="number" id="brLowerAngle" min="-180" max="180" step="1"></div>
+      <div class="muted" style="margin:6px 0;font-size:11px">💡 Seret jembatan di peta untuk memindah. Roda mouse di atas jembatan = putar sudut. Sudut bawah = arah jalan terowongan.</div>
+      <div class="row2">
+        <button id="brSnap">📍 Tempel ke jalan</button>
+        <button id="brDel" class="danger">🗑️ Hapus</button>
+      </div>
+    </div>
+
+    <div id="pBRoad" class="box hide">
+      <b>🛣️ Jalan bawaan</b>
+      <div class="kv"><span>Nama</span><b id="bName"></b></div>
+      <div class="kv"><span>Jenis</span><b id="bKind"></b></div>
+      <div class="kv"><span>Lebar</span><b id="bW"></b></div>
+      <div class="kv"><span>Panjang</span><b id="bLen"></b></div>
+      <div class="muted" style="margin:6px 0">Ubah jadi vektor spline supaya bentuk, lebar, dan tanjakannya bisa diedit. Lampu lalu lintas, lampu jalan, dan marka bawaan tetap di posisi lama.</div>
+      <button id="bEdit" class="primary" style="width:100%">✏️ Edit vektor jalan ini</button>
+    </div>
+
+    <div id="pPt" class="box hide">
+      <b>📍 Titik <span id="tIdx"></span></b>
+      <div class="kv"><span>Posisi</span><b id="tPos"></b></div>
+      <div class="kv"><span>Tanah asli di sini</span><b id="tGround"></b></div>
+      <div class="muted" style="margin-top:6px">Tinggi jalan (m)</div>
+      <div class="zrow"><button id="zDn">−</button><input type="number" id="tZ" step="0.5"><button id="zUp">＋</button></div>
+      <div class="row2"><button id="tGnd">Ikut tanah</button><button id="tDel" class="danger">Hapus titik</button></div>
+    </div>
+  </aside>
+</div>
+
+<section id="bottom">
+  <div id="pfhead"><b id="pfTitle">Profil tinggi jalan</b><span id="pfInfo"></span></div>
+  <div id="pfwrap"><canvas id="profile"></canvas></div>
+</section>
+
+<script src="{{ url_for('static', filename='mapedit-core.js') }}?v={{ version }}"></script>
+<script>
+'use strict';
+(() => {
+const CORE = window.MapEditCore;
+const $ = (id) => document.getElementById(id);
+const cv = $('map'), cx = cv.getContext('2d'), pf = $('profile'), px = pf.getContext('2d');
+const ICON = { tree: '🌳', pine: '🌲', house: '🏠', building: '🏢', warung: '🍜', shop: '🏪', store: '🛒', hotel: '🏨', school: '🏫', mosque: '🕌', factory: '🏭', market: '🧺', fence: '🚧', cart: '🛺', monument: '🗿' };
+const KCOL = { tree: '#3a8f3f', pine: '#1f5f3a', house: '#b08968', building: '#0284c7', warung: '#c2410c', shop: '#7c3aed', store: '#15803d', hotel: '#7c2d12', school: '#166534', mosque: '#0f766e', factory: '#64748b', market: '#b45309', fence: '#374151', cart: '#b45309', monument: '#a8a29e', dock: '#475569', pump: '#ef4444', amp: '#6b7280', lamp: '#facc15', signal: '#f43f5e' };
+const PADCOL = { yard: '#6b7280', spbu: '#6b7280', parking: '#6b7280', amp: '#78716c' };
+
+let BASE = null, E = null, CAT = {}, W = 0, H = 0, NX = 0, NY = 0, CELL = 40, ZMIN = -1000, ZMAX = 2500;
+let T0 = null, TC = null, tcv = null, tctx = null;
+let baseByKey = new Map(), RC = new Map(), ghost = new Set();
+let view = { x: 0, y: 0, s: 0.1 }, fitS = 0.1;
+let tool = 'select', armed = null, sel = null, drawing = null, drag = null, pdrag = null, pfRange = null;
+let hist = [], hi = -1, dirty = false, mouse = { sx: 0, sy: 0, wx: 0, wy: 0, in: false }, pending = false, needTerrain = false;
+
+// --- jembatan manual ---
+const DEG = Math.PI / 180;
+function brById(id) { return (E.bridges || []).find(b => b.id === id); }
+function selBridge() { return sel && sel.t === 'bridge' ? brById(sel.id) : null; }
+function hitBridge(m) {
+  for (let i = (E.bridges || []).length - 1; i >= 0; i--) {
+    const b = E.bridges[i];
+    const co = Math.cos(b.angle), si = Math.sin(b.angle);
+    const dx = m.wx - b.x, dy = m.wy - b.y;
+    const along = dx * co + dy * si, across = -dx * si + dy * co;
+    if (Math.abs(along) <= b.length / 2 + 6 / view.s && Math.abs(across) <= b.width / 2 + 6 / view.s)
+      return b;
+  }
+  return null;
+}
+function addBridge(wx, wy) {
+  const gz = groundAt(wx, wy);
+  const b = {
+    id: uid('br'), x: snapv(wx), y: snapv(wy), angle: 0, lowerAngle: Math.PI / 2,
+    length: 200, width: 100, lowerWidth: 100, upperRoad: '', lowerRoad: '',
+    upperZ: Math.round(gz + 30), lowerZ: Math.round(gz),
+  };
+  E.bridges = E.bridges || [];
+  E.bridges.push(b);
+  sel = { t: 'bridge', id: b.id };
+  commit(); schedule(); syncPanel();
+}
+function snapBridgeToRoads(b) {
+  // Snap upperZ/lowerZ ke ketinggian jalan terdekat di titik pusat
+  const allRoads = [...(BASE.roads || []), ...(E.roads || [])];
+  let bestUpper = null, bestLower = null, dU = Infinity, dL = Infinity;
+  for (const r of allRoads) {
+    const pts = RC.get(r.id) ? RC.get(r.id).samples : (r.pts || []);
+    for (const p of pts) {
+      const d = Math.hypot(p[0] - b.x, p[1] - b.y);
+      const z = p[2] !== undefined ? p[2] : groundAt(p[0], p[1]);
+      if (z >= b.lowerZ && d < dU) { dU = d; bestUpper = z; }
+      if (z <= b.upperZ && d < dL) { dL = d; bestLower = z; }
+    }
+  }
+  if (bestUpper !== null) b.upperZ = bestUpper;
+  if (bestLower !== null) b.lowerZ = bestLower;
+  commit(); schedule(); syncPanel();
+}
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const m1 = (px_) => (px_ / 10).toFixed(1);
+
+/* ------------------------------------------------------------ muat / simpan */
+async function load() {
+  const r = await fetch('/api/mapedit'); const d = await r.json();
+  BASE = d.base; E = normalize(d.edit);
+  W = BASE.world.w; H = BASE.world.h; CELL = BASE.limits.cell; ZMIN = BASE.limits.zMin; ZMAX = BASE.limits.zMax;
+  for (const c of BASE.catalog) CAT[c.kind] = c;
+  baseByKey = new Map(BASE.obstacles.map((o) => [o.k, o]));
+  const T = BASE.terrain; NX = Math.ceil(W / CELL) + 1; NY = T.ny;
+  T0 = new Float32Array(NX * NY); TC = new Float32Array(NX * NY);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < T.nx && i < NX; i++) T0[j * NX + i] = T.h[j * T.nx + i];
+  tcv = document.createElement('canvas'); tcv.width = NX; tcv.height = NY; tctx = tcv.getContext('2d');
+  buildPalette(); resize(); fit(); recompute(); pushHist(true); setDirty(false); toast('Peta dimuat. Seret objek dari kiri ke peta, atau pilih 🛣️ Gambar Jalan.');
+}
+function normalize(e) { return { objects: e.objects || [], removed: e.removed || [], moved: e.moved || {}, roads: e.roads || [], bridges: e.bridges || [] }; }
+
+async function save() {
+  finishDrawing();
+  const r = await fetch('/api/mapedit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edit: E }) });
+  if (!r.ok) { toast('Gagal menyimpan: ' + (await r.text())); return; }
+  const d = await r.json(); E = normalize(d.edit); pushHist(true); recompute(); setDirty(false);
+  toast('✅ Peta tersimpan di mapedit.json. Muat ulang game (F5) agar perubahan dipakai.');
+}
+function setDirty(v) { dirty = v; const s = $('saveState'); s.textContent = v ? '● Belum disimpan' : '✓ Tersimpan'; s.className = v ? 'dirty' : ''; }
+window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ------------------------------------------------------------ riwayat */
+function pushHist(force) {
+  const s = JSON.stringify(E);
+  if (!force && hist[hi] === s) return;
+  hist = hist.slice(0, hi + 1); hist.push(s); if (hist.length > 120) hist.shift(); hi = hist.length - 1; updUndo();
+}
+function commit() { pushHist(false); setDirty(true); }
+function undo(d) {
+  const n = hi + d; if (n < 0 || n >= hist.length) return;
+  hi = n; E = normalize(JSON.parse(hist[hi])); if (sel && !selExists()) sel = null; drawing = null;
+  setDirty(true); recompute(); updUndo(); syncPanel();
+}
+function updUndo() { $('undo').disabled = hi <= 0; $('redo').disabled = hi >= hist.length - 1; }
+
+/* ------------------------------------------------------------ model */
+const roadById = (id) => E.roads.find((r) => r.id === id);
+const baseRoad = (id) => BASE.roads.find((r) => r.id === id);
+const roadName = (r) => (r.ref ? (baseRoad(r.ref) || {}).name || r.ref : r.name);
+const refSet = () => new Set(E.roads.filter((r) => r.ref).map((r) => r.ref));
+const objById = (id) => E.objects.find((o) => o.id === id);
+const selRoad = () => (sel && sel.t === 'road' ? roadById(sel.id) : null);
+function selExists() { return sel.t === 'road' ? !!roadById(sel.id) : sel.t === 'bridge' ? !!brById(sel.id) : sel.t === 'obj' ? !!objById(sel.id) : sel.t === 'broad' ? !!baseRoad(sel.id) && !refSet().has(sel.id) : baseByKey.has(sel.k) && !E.removed.includes(sel.k); }
+function basePos(o) { const m = E.moved[o.k]; return m ? { x: m.x, y: m.y } : { x: o.x, y: o.y }; }
+const snapv = (v) => ($('snap').checked ? Math.round(v / 10) * 10 : Math.round(v * 10) / 10);
+const groundAt = (x, y) => CORE.heightAt(T0, NX, NY, x, y, CELL);
+
+function schedule(terrain) { if (terrain) needTerrain = true; if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; if (needTerrain) { needTerrain = false; recompute(); } else { draw(); drawProfile(); } }); } }
+
+function recompute() {
+  RC = new Map();
+  const roadsT = [];
+  for (const r of E.roads) {
+    const idx = [], samples = CORE.spline(r.pts, CORE.SAMPLE_STEP, idx), cum = [0];
+    for (let k = 1; k < samples.length; k++) cum.push(cum[k - 1] + Math.hypot(samples[k][0] - samples[k - 1][0], samples[k][1] - samples[k - 1][1]));
+    RC.set(r.id, { samples, idx, cum }); roadsT.push({ w: r.w, samples });
+  }
+  TC.set(T0); CORE.carve(TC, NX, NY, roadsT, CELL);
+  ghost = new Set();
+  const test = (key, o, x, y) => {
+    const cxm = x + o.w / 2, cym = y + o.h / 2;
+    for (const r of E.roads) { const s = RC.get(r.id).samples, c = r.w / 2 + 12;
+      for (let i = 0; i < s.length - 1; i++) if (segDist(cxm, cym, s[i], s[i + 1]) < c) { ghost.add(key); return; } }
+  };
+  if (E.roads.length) {
+    for (const o of BASE.obstacles) if ((o.kind === 'tree' || o.kind === 'pine') && !E.removed.includes(o.k)) { const p = basePos(o); test('b:' + o.k, o, p.x, p.y); }
+    for (const o of E.objects) if (o.kind === 'tree' || o.kind === 'pine') test('o:' + o.id, o, o.x, o.y);
+  }
+  paintTerrain(); draw(); drawProfile(); syncPanel(); renderRoadList(); updStats();
+}
+function segDist(px_, py_, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1e-9, t = clamp(((px_ - a[0]) * dx + (py_ - a[1]) * dy) / l2, 0, 1);
+  return Math.hypot(px_ - (a[0] + t * dx), py_ - (a[1] + t * dy));
+}
+
+/* ------------------------------------------------------------ warna tanah */
+const STOPS = [[0, 168, 201, 138], [100, 192, 204, 122], [250, 218, 192, 112], [400, 198, 152, 98], [600, 164, 124, 92], [900, 244, 244, 244]];
+function hypso(h) {
+  if (h <= STOPS[0][0]) return STOPS[0].slice(1);
+  for (let i = 1; i < STOPS.length; i++) if (h <= STOPS[i][0]) { const a = STOPS[i - 1], b = STOPS[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]; }
+  return STOPS[STOPS.length - 1].slice(1);
+}
+function paintTerrain() {
+  const img = tctx.createImageData(NX, NY), d = img.data, g = (i, j) => TC[clamp(j, 0, NY - 1) * NX + clamp(i, 0, NX - 1)];
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+    const h = TC[j * NX + i], c = hypso(h);
+    let sh = clamp(1 + (g(i - 1, j) - g(i + 1, j) + g(i, j - 1) - g(i, j + 1)) * 0.012, 0.6, 1.35);
+    if (Math.floor(h / 50) !== Math.floor(g(i + 1, j) / 50) || Math.floor(h / 50) !== Math.floor(g(i, j + 1) / 50)) sh *= 0.86;
+    let r = c[0] * sh, gg = c[1] * sh, b = c[2] * sh;
+    if ($('lyDelta').checked) { const dl = TC[j * NX + i] - T0[j * NX + i]; if (Math.abs(dl) > 2) { const a = Math.min(0.75, Math.abs(dl) / 90), t = dl > 0 ? [239, 68, 68] : [56, 189, 248]; r += (t[0] - r) * a; gg += (t[1] - gg) * a; b += (t[2] - b) * a; } }
+    const o = (j * NX + i) * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
+  }
+  tctx.putImageData(img, 0, 0);
+}
+
+/* ------------------------------------------------------------ tampilan */
+function resize() {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = Math.max(1, w * dpr); cv.height = Math.max(1, h * dpr);
+  const pw = pf.clientWidth, ph = pf.clientHeight; pf.width = Math.max(1, pw * dpr); pf.height = Math.max(1, ph * dpr);
+  if (BASE) { draw(); drawProfile(); }
+}
+function fit() { const w = cv.clientWidth, h = cv.clientHeight; fitS = Math.min(w / W, h / H) * 0.96; view.s = fitS; view.x = -(w / view.s - W) / 2; view.y = -(h / view.s - H) / 2; draw(); }
+function zoomAt(sx, sy, f) {
+  const wx = sx / view.s + view.x, wy = sy / view.s + view.y; view.s = clamp(view.s * f, fitS * 0.7, 3); view.x = wx - sx / view.s; view.y = wy - sy / view.s; draw();
+}
+const toW = (sx, sy) => ({ wx: sx / view.s + view.x, wy: sy / view.s + view.y });
+const toS = (wx, wy) => [(wx - view.x) * view.s, (wy - view.y) * view.s];
+function evPos(e) { const r = cv.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top; return { sx, sy, ...toW(sx, sy) }; }
+
+function draw() {
+  if (!BASE) return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight, s = view.s;
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.fillStyle = '#1b2330'; cx.fillRect(0, 0, w, h);
+  cx.save(); cx.scale(s, s); cx.translate(-view.x, -view.y);
+  cx.fillStyle = '#6f9a58'; cx.fillRect(0, 0, W, H);
+  if ($('lyTerrain').checked) { cx.imageSmoothingEnabled = true; cx.drawImage(tcv, -CELL / 2, -CELL / 2, NX * CELL, NY * CELL); }
+  cx.strokeStyle = '#0006'; cx.lineWidth = 2 / s; cx.strokeRect(0, 0, W, H);
+  const vx0 = view.x - 50, vy0 = view.y - 50, vx1 = view.x + w / s + 50, vy1 = view.y + h / s + 50;
+  const vis = (x, y, ww, hh) => x < vx1 && y < vy1 && x + ww > vx0 && y + hh > vy0;
+  cx.lineJoin = 'round'; cx.lineCap = 'round';
+  const refs = refSet(), padOff = new Map();                      // pad jalan masuk ikut rumah misi yang digeser
+  for (const o of BASE.obstacles) if (o.grp && E.moved[o.k]) for (const i of o.pads) padOff.set(i, [E.moved[o.k].x - o.x, E.moved[o.k].y - o.y]);
+  for (const p of BASE.sawah) if (vis(p.x, p.y, p.w, p.h)) { cx.fillStyle = '#a3c95b99'; cx.fillRect(p.x, p.y, p.w, p.h); }
+  BASE.pads.forEach((p, i) => { const f = padOff.get(i) || [0, 0], x = p.x + f[0], y = p.y + f[1]; if (vis(x, y, p.w, p.h)) { cx.fillStyle = (PADCOL[p.kind] || '#6b7280') + 'aa'; cx.fillRect(x, y, p.w, p.h); } });
+  for (const r of BASE.roads) {
+    if (refs.has(r.id)) continue;                                  // sudah diganti vektor hasil edit
+    const hot = sel && sel.t === 'broad' && sel.id === r.id;
+    if (hot) { cx.strokeStyle = '#38bdf8'; cx.lineWidth = r.w + 12 / s; cx.beginPath(); r.pts.forEach((p, i) => (i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1]))); cx.stroke(); }
+    cx.strokeStyle = r.kind === 'toll' ? '#b45309' : '#5b6370'; cx.lineWidth = Math.max(r.w, 2.5 / s); cx.beginPath(); r.pts.forEach((p, i) => (i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1]))); cx.stroke();
+  }
+  if ($('lyObj').checked) {
+    for (const o of BASE.obstacles) {
+      if (E.removed.includes(o.k)) continue;
+      const p = basePos(o); if (!vis(p.x, p.y, o.w, o.h)) continue;
+      drawObj(o.kind, p.x, p.y, o.w, o.h, o.color, ghost.has('b:' + o.k), o.lock || (o.grp ? 2 : 0), o.label);
+    }
+    for (const o of E.objects) if (vis(o.x, o.y, o.w, o.h)) drawObj(o.kind, o.x, o.y, o.w, o.h, o.color, ghost.has('o:' + o.id), false, o.label, true);
+  }
+  for (const r of E.roads) drawRoad(r);
+  // --- render jembatan manual ---
+  for (const b of (E.bridges || [])) drawBridge(b);
+  if (sel && sel.t !== 'road') { const b = selBox(); if (b) { cx.setLineDash([6 / s, 4 / s]); cx.strokeStyle = '#38bdf8'; cx.lineWidth = 2 / s; cx.strokeRect(b.x - 3 / s, b.y - 3 / s, b.w + 6 / s, b.h + 6 / s); cx.setLineDash([]); if (b.editable) for (const c of corners(b)) { cx.fillStyle = '#fff'; cx.strokeStyle = '#0369a1'; cx.fillRect(c.x - 4 / s, c.y - 4 / s, 8 / s, 8 / s); cx.strokeRect(c.x - 4 / s, c.y - 4 / s, 8 / s, 8 / s); } } }
+  if ($('lyLabel').checked && s > 0.11) { cx.fillStyle = '#0f172a'; cx.font = `bold ${12 / s}px system-ui`; cx.textAlign = 'center';
+    for (const p of BASE.places) if (p.label && p.x > vx0 && p.x < vx1 && p.y > vy0 && p.y < vy1) { cx.lineWidth = 3 / s; cx.strokeStyle = '#ffffffcc'; cx.strokeText(p.label, p.x, p.y - 14 / s); cx.fillText(p.label, p.x, p.y - 14 / s); }
+    for (const r of BASE.roads) if (s > 0.14 && r.pts.length > 1 && !refs.has(r.id)) { const p = r.pts[r.pts.length >> 1]; if (p[0] > vx0 && p[0] < vx1 && p[1] > vy0 && p[1] < vy1) { cx.lineWidth = 3 / s; cx.strokeStyle = '#000b'; cx.fillStyle = '#e2e8f0'; cx.strokeText(r.name, p[0], p[1]); cx.fillText(r.name, p[0], p[1]); } }
+  }
+  if (drawing && mouse.in) { const r = roadById(drawing); if (r) { const l = r.pts[r.pts.length - 1]; cx.setLineDash([8 / s, 6 / s]); cx.strokeStyle = '#38bdf8'; cx.lineWidth = 3 / s; cx.beginPath(); cx.moveTo(l[0], l[1]); cx.lineTo(snapv(mouse.wx), snapv(mouse.wy)); cx.stroke(); cx.setLineDash([]); } }
+  if (armed && mouse.in) { const c = CAT[armed]; drawObj(armed, snapv(mouse.wx - c.w / 2), snapv(mouse.wy - c.h / 2), c.w, c.h, c.color, false, false, '', true, 0.55); }
+  cx.restore();
+  // skala
+  const bar = (() => { const t = [10, 20, 50, 100, 200, 500, 1000, 2000].find((m) => m * 10 * s >= 70) || 2000; return t; })();
+  cx.fillStyle = '#e2e8f0'; cx.fillRect(12, h - 36, bar * 10 * s, 3); cx.font = '11px system-ui'; cx.textAlign = 'left'; cx.fillText(bar + ' m', 12, h - 42);
+}
+function drawObj(kind, x, y, w, h, color, ghosted, locked, label, added, alpha) {
+  const s = view.s; cx.globalAlpha = alpha || (ghosted ? 0.22 : 1);
+  const col = color || KCOL[kind] || '#9ca3af';
+  if (kind === 'tree' || kind === 'pine') { cx.fillStyle = col; cx.beginPath(); cx.ellipse(x + w / 2, y + h / 2, Math.max(w / 2, 1 / s), Math.max(h / 2, 1 / s), 0, 0, 6.3); cx.fill(); }
+  else { cx.fillStyle = col; cx.fillRect(x, y, w, Math.max(h, 1.5 / s)); cx.strokeStyle = locked === 2 ? '#fb923c' : locked ? '#fde68a88' : '#0007'; cx.lineWidth = (locked === 2 ? 2.4 : 1.2) / s; cx.strokeRect(x, y, w, h); }
+  if (added) { cx.strokeStyle = '#4ade80'; cx.lineWidth = 1.5 / s; cx.strokeRect(x, y, w, h); }
+  if (ghosted) { cx.strokeStyle = '#ef4444'; cx.lineWidth = 1.5 / s; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + w, y + h); cx.moveTo(x + w, y); cx.lineTo(x, y + h); cx.stroke(); }
+  if (label && s > 0.22 && w * s > 40) { cx.fillStyle = '#fff'; cx.font = `${Math.min(11, w * s / 9) / s}px system-ui`; cx.textAlign = 'center'; cx.fillText(label, x + w / 2, y + h / 2 + 3 / s, w); }
+  cx.globalAlpha = 1;
+}
+const gradeCol = (g) => { g = Math.abs(g); return g < 0.04 ? '#4ade80' : g < 0.08 ? '#facc15' : g < 0.12 ? '#fb923c' : '#ef4444'; };
+function drawBridge(b) {
+  const s = view.s, isSel = sel && sel.t === 'bridge' && sel.id === b.id;
+  const co = Math.cos(b.angle), si = Math.sin(b.angle);
+  const lco = Math.cos(b.lowerAngle), lsi = Math.sin(b.lowerAngle);
+  const hw = b.width / 2, lhw = (b.lowerWidth || b.width) / 2, hl = b.length / 2;
+  // Jalan atas (deck)
+  cx.save();
+  cx.translate(b.x, b.y); cx.rotate(b.angle);
+  cx.fillStyle = isSel ? '#38bdf8bb' : '#7c858ebb';
+  cx.fillRect(-hl, -hw, b.length, b.width);
+  cx.strokeStyle = isSel ? '#38bdf8' : '#94a3b8'; cx.lineWidth = 2 / s;
+  cx.strokeRect(-hl, -hw, b.length, b.width);
+  // Label tinggi atas
+  cx.fillStyle = '#fff'; cx.font = `bold ${10 / s}px system-ui`; cx.textAlign = 'center';
+  cx.fillText('⬆ ' + m1(b.upperZ) + 'm', 0, -hw - 5 / s);
+  cx.restore();
+  // Jalan bawah (tunnel)
+  cx.save();
+  cx.translate(b.x, b.y); cx.rotate(b.lowerAngle);
+  cx.fillStyle = '#1e293bcc';
+  cx.fillRect(-hl - 10, -lhw, b.length + 20, lhw * 2);
+  cx.strokeStyle = isSel ? '#fb923c' : '#475569'; cx.lineWidth = isSel ? 2.5 / s : 1.5 / s; cx.setLineDash([6/s, 4/s]);
+  cx.strokeRect(-hl - 10, -lhw, b.length + 20, lhw * 2);
+  cx.setLineDash([]);
+  cx.fillStyle = '#fb923c'; cx.font = `bold ${10 / s}px system-ui`; cx.textAlign = 'center';
+  cx.fillText('⬇ ' + m1(b.lowerZ) + 'm', 0, lhw + 13 / s);
+  cx.restore();
+  // Titik pusat
+  cx.fillStyle = isSel ? '#38bdf8' : '#fff'; cx.strokeStyle = '#000a'; cx.lineWidth = 1.5 / s;
+  cx.beginPath(); cx.arc(b.x, b.y, 7 / s, 0, 6.3); cx.fill(); cx.stroke();
+  cx.fillStyle = '#0b1220'; cx.font = `bold ${9 / s}px system-ui`; cx.textAlign = 'center';
+  cx.fillText('🌉', b.x, b.y + 3 / s);
+}
+function drawRoad(r) {
+  const rc = RC.get(r.id); if (!rc) return; const s = view.s, S = rc.samples, on = sel && sel.t === 'road' && sel.id === r.id;
+  cx.strokeStyle = on ? '#38bdf8' : r.ref ? '#a78bfa' : '#0b1220'; cx.lineWidth = r.w + (on ? 14 : 8) / s; cx.beginPath(); S.forEach((p, i) => (i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1]))); cx.stroke();
+  cx.strokeStyle = '#2b303b'; cx.lineWidth = r.w; cx.stroke();
+  for (let k = 0; k < S.length - 1; k++) { const dd = Math.hypot(S[k + 1][0] - S[k][0], S[k + 1][1] - S[k][1]) || 1; cx.strokeStyle = gradeCol((S[k + 1][2] - S[k][2]) / dd); cx.lineWidth = Math.max(3 / s, 3); cx.beginPath(); cx.moveTo(S[k][0], S[k][1]); cx.lineTo(S[k + 1][0], S[k + 1][1]); cx.stroke(); }
+  const hs = 6 / s;
+  r.pts.forEach((p, i) => {
+    const isSel = on && sel.pt === i;
+    cx.fillStyle = isSel ? '#fb923c' : i === 0 ? '#4ade80' : i === r.pts.length - 1 ? '#f87171' : '#fff'; cx.strokeStyle = '#0b1220'; cx.lineWidth = 1.5 / s;
+    cx.beginPath(); cx.arc(p[0], p[1], hs, 0, 6.3); cx.fill(); cx.stroke();
+    if (on) { cx.fillStyle = '#fff'; cx.font = `bold ${11 / s}px system-ui`; cx.textAlign = 'left'; cx.lineWidth = 3 / s; cx.strokeStyle = '#000c'; const t = m1(p[2]) + ' m'; cx.strokeText(t, p[0] + 9 / s, p[1] - 9 / s); cx.fillText(t, p[0] + 9 / s, p[1] - 9 / s); }
+  });
+  if (on) for (let i = 0; i < r.pts.length - 1; i++) { const m = midHandle(rc, i); cx.fillStyle = '#38bdf8'; cx.strokeStyle = '#0b1220'; cx.beginPath(); cx.arc(m[0], m[1], 4.5 / s, 0, 6.3); cx.fill(); cx.stroke(); cx.fillStyle = '#0b1220'; cx.fillRect(m[0] - 2.5 / s, m[1] - 0.6 / s, 5 / s, 1.2 / s); cx.fillRect(m[0] - 0.6 / s, m[1] - 2.5 / s, 1.2 / s, 5 / s); }
+}
+function midHandle(rc, i) { const a = rc.idx[i], b = rc.idx[i + 1], k = (a + b) >> 1; return rc.samples[k]; }
+
+/* ------------------------------------------------------------ seleksi & hit-test */
+function selBox() {
+  if (sel.t === 'obj') { const o = objById(sel.id); return o && { x: o.x, y: o.y, w: o.w, h: o.h, editable: true }; }
+  if (sel.t === 'base') { const o = baseByKey.get(sel.k); if (!o) return null; const p = basePos(o); return { x: p.x, y: p.y, w: o.w, h: o.h, editable: false }; }
+}
+const corners = (b) => [{ n: 'nw', x: b.x, y: b.y }, { n: 'ne', x: b.x + b.w, y: b.y }, { n: 'sw', x: b.x, y: b.y + b.h }, { n: 'se', x: b.x + b.w, y: b.y + b.h }];
+function hitPoint(m) { for (let ri = E.roads.length - 1; ri >= 0; ri--) { const r = E.roads[ri]; for (let i = r.pts.length - 1; i >= 0; i--) { const [sx, sy] = toS(r.pts[i][0], r.pts[i][1]); if (Math.hypot(sx - m.sx, sy - m.sy) <= 9) return { r, i }; } } return null; }
+function hitMid(m) { const r = selRoad(); if (!r) return null; const rc = RC.get(r.id); for (let i = 0; i < r.pts.length - 1; i++) { const p = midHandle(rc, i), [sx, sy] = toS(p[0], p[1]); if (Math.hypot(sx - m.sx, sy - m.sy) <= 8) return { r, i, p }; } return null; }
+function hitRoad(m) { for (let ri = E.roads.length - 1; ri >= 0; ri--) { const r = E.roads[ri], S = RC.get(r.id).samples, lim = Math.max(r.w / 2, 6 / view.s); for (let i = 0; i < S.length - 1; i++) if (segDist(m.wx, m.wy, S[i], S[i + 1]) <= lim) return r; } return null; }
+function hitBaseRoad(m) {
+  const refs = refSet(); let best = null, bd = Infinity;
+  for (const r of BASE.roads) {
+    if (refs.has(r.id)) continue; const lim = Math.max(r.w / 2, 6 / view.s); let d = Infinity;
+    for (let i = 0; i < r.pts.length - 1 && d > lim; i++) d = Math.min(d, segDist(m.wx, m.wy, r.pts[i], r.pts[i + 1]));
+    if (d <= lim && d < bd) { bd = d; best = r; }
+  }
+  return best;
+}
+function hitObj(m) {
+  let best = null, ba = Infinity; const pad = 3 / view.s;
+  const test = (ref, x, y, w, h, bonus) => { if (m.wx >= x - pad && m.wx <= x + w + pad && m.wy >= y - pad && m.wy <= y + h + pad) { const a = Math.max(w, 4) * Math.max(h, 4) - bonus; if (a < ba) { ba = a; best = ref; } } };
+  for (const o of BASE.obstacles) { if (E.removed.includes(o.k)) continue; const p = basePos(o); test({ t: 'base', k: o.k }, p.x, p.y, o.w, o.h, 0); }
+  for (const o of E.objects) test({ t: 'obj', id: o.id }, o.x, o.y, o.w, o.h, 1);
+  return best;
+}
+function hitCorner(m) { if (!sel || sel.t !== 'obj') return null; const b = selBox(); if (!b) return null; for (const c of corners(b)) { const [sx, sy] = toS(c.x, c.y); if (Math.abs(sx - m.sx) <= 7 && Math.abs(sy - m.sy) <= 7) return c.n; } return null; }
+
+/* ------------------------------------------------------------ operasi */
+function addObject(kind, wx, wy) {
+  const c = CAT[kind]; const o = { id: uid('o'), kind, x: clamp(snapv(wx - c.w / 2), 0, W - c.w), y: clamp(snapv(wy - c.h / 2), 0, H - c.h), w: c.w, h: c.h, label: c.label || '' };
+  if (c.color) o.color = c.color; E.objects.push(o); sel = { t: 'obj', id: o.id }; commit(); schedule(true); syncPanel();
+}
+function deleteSel() {
+  if (!sel) return;
+  if (sel.t === 'obj') E.objects = E.objects.filter((o) => o.id !== sel.id);
+  else if (sel.t === 'bridge') E.bridges = (E.bridges || []).filter((b) => b.id !== sel.id);
+  else if (sel.t === 'base') { const o = baseByKey.get(sel.k); if (o.lock || o.grp) { toast(o.grp ? '🏠 Rumah misi tidak bisa dihapus, tapi bisa dipindah.' : '🔒 Objek ini terhubung ke pintu/interior/misi, tidak bisa dihapus.'); return; } if (!E.removed.includes(sel.k)) E.removed.push(sel.k); delete E.moved[sel.k]; }
+  else if (sel.t === 'road') { if (sel.pt >= 0) { delPoint(roadById(sel.id), sel.pt); return; } const gone = roadById(sel.id); if (gone && gone.ref) toast('↺ Jalan dikembalikan ke bentuk aslinya.'); E.roads = E.roads.filter((r) => r.id !== sel.id); if (drawing === sel.id) drawing = null; }
+  sel = null; commit(); schedule(true); syncPanel();
+}
+function delPoint(r, i) {
+  if (!r) return; r.pts.splice(i, 1);
+  if (r.pts.length < 2 && drawing !== r.id) { E.roads = E.roads.filter((q) => q !== r); sel = null; } else sel = { t: 'road', id: r.id, pt: -1 };
+  commit(); schedule(true); syncPanel();
+}
+function editBaseRoad(id) {
+  const b = baseRoad(id); if (!b) return;
+  const had = E.roads.find((r) => r.ref === id); if (had) { sel = { t: 'road', id: had.id, pt: -1 }; syncPanel(); schedule(); return; }
+  if (E.roads.length >= 60) { toast('Terlalu banyak jalan yang diedit (maks 60).'); return; }
+  const zs = b.pts.map((p) => groundAt(p[0], p[1])), keep = CORE.simplify(b.pts, 2.5, zs, 4);
+  const r = { id: uid('r'), ref: id, w: b.w, pts: keep.map((i) => [Math.round(b.pts[i][0] * 10) / 10, Math.round(b.pts[i][1] * 10) / 10, Math.round(zs[i])]) };
+  E.roads.push(r); sel = { t: 'road', id: r.id, pt: -1 }; commit(); schedule(true); syncPanel(); toast(`✏️ ${b.name}: ${b.pts.length} titik → ${r.pts.length} titik kontrol spline.`);
+}
+function newRoadAt(x, y) {
+  const r = { id: uid('r'), name: 'Jalan baru ' + (E.roads.length + 1), kind: 'local', w: 100, pts: [[x, y, Math.round(groundAt(x, y))]] };
+  E.roads.push(r); drawing = r.id; sel = { t: 'road', id: r.id, pt: 0 }; return r;
+}
+function finishDrawing() { if (!drawing) return; const r = roadById(drawing); drawing = null; if (r && r.pts.length < 2) { E.roads = E.roads.filter((q) => q !== r); sel = null; } commit(); schedule(true); syncPanel(); }
+function setTool(t) { tool = t; if (t !== 'road') finishDrawing(); armed = null; document.querySelectorAll('#tools button').forEach((b) => b.classList.toggle('on', b.dataset.tool === t)); document.querySelectorAll('.pal .it').forEach((b) => b.classList.remove('armed')); cv.style.cursor = t === 'road' ? 'crosshair' : t === 'delete' ? 'not-allowed' : 'default'; hint(); draw(); }
+function arm(kind) { setTool('select'); armed = kind; document.querySelectorAll('.pal .it').forEach((b) => b.classList.toggle('armed', b.dataset.kind === kind)); cv.style.cursor = 'copy'; hint(); }
+function hint() {
+  $('hintbar').textContent = armed ? `Klik di peta untuk menaruh “${CAT[armed].name}” · klik kanan = batal`
+    : drawing ? 'Klik untuk menambah titik jalan · klik kanan / dobel klik = selesai'
+    : tool === 'road' ? 'Klik di peta untuk memulai jalan baru (atau klik jalan buatan untuk mengeditnya)'
+    : tool === 'bridge' ? 'Klik di peta untuk menaruh jembatan/terowongan · seret untuk memindah · roda mouse = putar sudut'
+    : tool === 'delete' ? 'Klik objek, jalan, titik jalan, atau jembatan untuk menghapus'
+    : 'Klik = pilih · seret = pindah · seret kosong / klik kanan = geser peta';
+}
+
+/* ------------------------------------------------------------ mouse di peta */
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+cv.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const p = evPos(e);
+  if (sel && sel.t === 'bridge') {
+    const b = selBridge();
+    if (b) {
+      if (e.shiftKey) {
+        b.lowerAngle = (b.lowerAngle + (e.deltaY < 0 ? 5 * DEG : -5 * DEG)) % (Math.PI * 2);
+      } else {
+        b.angle = (b.angle + (e.deltaY < 0 ? 5 * DEG : -5 * DEG)) % (Math.PI * 2);
+      }
+      commit(); schedule(); syncPanel(); return;
+    }
+  }
+  zoomAt(p.sx, p.sy, e.deltaY < 0 ? 1.18 : 1 / 1.18);
+}, { passive: false });
+cv.addEventListener('dragover', (e) => e.preventDefault());
+cv.addEventListener('drop', (e) => { e.preventDefault(); const d = e.dataTransfer.getData('text/plain'); if (d.startsWith('kind:') && CAT[d.slice(5)]) { const p = evPos(e); addObject(d.slice(5), p.wx, p.wy); } });
+cv.addEventListener('pointerdown', (e) => {
+  cv.setPointerCapture(e.pointerId); const m = evPos(e); Object.assign(mouse, m, { in: true });
+  if (e.button === 1 || e.button === 2) { drag = { type: 'pan', sx: m.sx, sy: m.sy, vx: view.x, vy: view.y, btn: e.button, moved: false, m }; return; }
+  if (e.button !== 0) return;
+  if (armed) { addObject(armed, m.wx, m.wy); return; }
+  if (tool === 'bridge') {
+    const hb = hitBridge(m);
+    if (hb) { sel = { t: 'bridge', id: hb.id }; drag = { type: 'bridge', b: hb, ox: hb.x, oy: hb.y, dx: m.wx - hb.x, dy: m.wy - hb.y, moved: false }; syncPanel(); schedule(); return; }
+    addBridge(m.wx, m.wy); return;
+  }
+  if (tool === 'road') {
+    if (drawing) { const r = roadById(drawing), l = r.pts[r.pts.length - 1], [lx, ly] = toS(l[0], l[1]); if (Math.hypot(lx - m.sx, ly - m.sy) < 6) return;
+      const x = clamp(snapv(m.wx), 0, W), y = clamp(snapv(m.wy), 0, H); r.pts.push([x, y, Math.round(groundAt(x, y))]); sel = { t: 'road', id: r.id, pt: r.pts.length - 1 }; schedule(true); syncPanel(); return; }
+    const hp = hitPoint(m); if (hp) { sel = { t: 'road', id: hp.r.id, pt: hp.i }; drag = { type: 'pt', r: hp.r, i: hp.i, moved: false }; syncPanel(); schedule(); return; }
+    const hr = hitRoad(m); if (hr) { sel = { t: 'road', id: hr.id, pt: -1 }; syncPanel(); schedule(); return; }
+    newRoadAt(clamp(snapv(m.wx), 0, W), clamp(snapv(m.wy), 0, H)); hint(); syncPanel(); schedule(true); return;
+  }
+  if (tool === 'delete') {
+    const hb = hitBridge(m); if (hb) { sel = { t: 'bridge', id: hb.id }; deleteSel(); return; }
+    const hp = hitPoint(m); if (hp) { delPoint(hp.r, hp.i); return; }
+    const ho = hitObj(m); if (ho) { sel = ho; deleteSel(); return; }
+    const hr = hitRoad(m); if (hr) { sel = { t: 'road', id: hr.id, pt: -1 }; deleteSel(); }
+    return;
+  }
+  const cn = hitCorner(m);
+  if (cn) { const o = objById(sel.id); drag = { type: 'resize', o, n: cn, r0: { x: o.x, y: o.y, w: o.w, h: o.h }, moved: false }; return; }
+  const hb = hitBridge(m); if (hb) { sel = { t: 'bridge', id: hb.id }; drag = { type: 'bridge', b: hb, ox: hb.x, oy: hb.y, dx: m.wx - hb.x, dy: m.wy - hb.y, moved: false }; syncPanel(); schedule(); return; }
+  const hp = hitPoint(m); if (hp) { sel = { t: 'road', id: hp.r.id, pt: hp.i }; drag = { type: 'pt', r: hp.r, i: hp.i, moved: false }; syncPanel(); schedule(); return; }
+  const hm = hitMid(m); if (hm) { hm.r.pts.splice(hm.i + 1, 0, [Math.round(hm.p[0] * 10) / 10, Math.round(hm.p[1] * 10) / 10, Math.round(hm.p[2])]); sel = { t: 'road', id: hm.r.id, pt: hm.i + 1 }; drag = { type: 'pt', r: hm.r, i: hm.i + 1, moved: true }; syncPanel(); schedule(true); return; }
+  const ho = hitObj(m);
+  if (ho) { sel = ho; const b = selBox(); drag = { type: 'obj', ox: b.x, oy: b.y, dx: m.wx - b.x, dy: m.wy - b.y, moved: false }; syncPanel(); schedule(); return; }
+  const hr = hitRoad(m);
+  if (hr) { sel = { t: 'road', id: hr.id, pt: -1 }; drag = { type: 'road', r: hr, start: JSON.stringify(hr.pts), wx: m.wx, wy: m.wy, moved: false }; syncPanel(); schedule(); return; }
+  const hbr = hitBaseRoad(m);
+  if (hbr) { sel = { t: 'broad', id: hbr.id }; syncPanel(); schedule(); drag = { type: 'pan', sx: m.sx, sy: m.sy, vx: view.x, vy: view.y, btn: 0, moved: false, m }; return; }
+  sel = null; syncPanel(); drag = { type: 'pan', sx: m.sx, sy: m.sy, vx: view.x, vy: view.y, btn: 0, moved: false, m }; schedule();
+});
+cv.addEventListener('pointermove', (e) => {
+  const m = evPos(e); Object.assign(mouse, m, { in: true });
+  $('status').textContent = `x ${Math.round(m.wx)}  y ${Math.round(m.wy)}  · tanah ${m1(groundAt(m.wx, m.wy))} m  · zoom ${Math.round(view.s / fitS * 100)}%`;
+  if (!drag) { if (armed || drawing) schedule(); else if (tool === 'select') cv.style.cursor = hitCorner(m) ? 'nwse-resize' : hitPoint(m) || hitMid(m) ? 'pointer' : hitObj(m) || hitRoad(m) || hitBridge(m) ? 'move' : hitBaseRoad(m) ? 'pointer' : 'default'; return; }
+  if (drag.type === 'pan') { if (Math.hypot(m.sx - drag.sx, m.sy - drag.sy) > 3) drag.moved = true; if (drag.moved) { view.x = drag.vx - (m.sx - drag.sx) / view.s; view.y = drag.vy - (m.sy - drag.sy) / view.s; draw(); } return; }
+  drag.moved = true;
+  if (drag.type === 'bridge') {
+    drag.b.x = clamp(snapv(m.wx - drag.dx), 0, W);
+    drag.b.y = clamp(snapv(m.wy - drag.dy), 0, H);
+    schedule(); syncPanel();
+  } else if (drag.type === 'obj') {
+    const nx = snapv(m.wx - drag.dx), ny = snapv(m.wy - drag.dy);
+    if (sel.t === 'obj') { const o = objById(sel.id); o.x = clamp(nx, 0, W - o.w); o.y = clamp(ny, 0, H - o.h); }
+    else { const bo = baseByKey.get(sel.k); if (bo.lock) return; E.moved[sel.k] = { x: clamp(nx, -50, W), y: clamp(ny, -50, H) }; }
+    schedule(E.roads.length > 0);
+  } else if (drag.type === 'resize') {
+    const o = drag.o, r0 = drag.r0, c = CAT[o.kind], wx = snapv(m.wx), wy = snapv(m.wy);
+    let x0 = r0.x, y0 = r0.y, x1 = r0.x + r0.w, y1 = r0.y + r0.h;
+    if (drag.n.includes('w')) x0 = wx; else x1 = wx; if (drag.n.includes('n')) y0 = wy; else y1 = wy;
+    const w = clamp(Math.abs(x1 - x0), c.min, c.max), h = clamp(Math.abs(y1 - y0), c.min, c.max);
+    o.w = w; o.h = h; o.x = clamp(drag.n.includes('w') ? r0.x + r0.w - w : r0.x, 0, W - w); o.y = clamp(drag.n.includes('n') ? r0.y + r0.h - h : r0.y, 0, H - h); syncPanel(); schedule(E.roads.length > 0);
+  } else if (drag.type === 'pt') {
+    const p = drag.r.pts[drag.i]; p[0] = clamp(snapv(m.wx), 0, W); p[1] = clamp(snapv(m.wy), 0, H); schedule(true); syncPanel();
+  } else if (drag.type === 'road') {
+    const pts = JSON.parse(drag.start), dx = snapv(m.wx - drag.wx), dy = snapv(m.wy - drag.wy);
+    drag.r.pts = pts.map((p) => [clamp(p[0] + dx, 0, W), clamp(p[1] + dy, 0, H), p[2]]); schedule(true);
+  }
+});
+cv.addEventListener('pointerup', (e) => {
+  const d = drag; drag = null; if (!d) return;
+  if (d.type === 'pan') {
+    if (!d.moved && d.btn === 2) {   // klik kanan tanpa geser
+      if (armed) { armed = null; document.querySelectorAll('.pal .it').forEach((b) => b.classList.remove('armed')); cv.style.cursor = 'default'; hint(); draw(); return; }
+      if (drawing) { finishDrawing(); hint(); return; }
+      const hp = hitPoint(d.m); if (hp) delPoint(hp.r, hp.i);
+    }
+    return;
+  }
+  if (d.moved) commit();
+  if (d.type === 'pt' || d.type === 'road' || d.type === 'bridge') schedule(true);
+});
+cv.addEventListener('dblclick', (e) => { if (drawing) { finishDrawing(); hint(); } });
+cv.addEventListener('pointerleave', () => { mouse.in = false; if (armed || drawing) draw(); });
+
+/* ------------------------------------------------------------ profil tinggi */
+function niceStep(range) { const raw = range / 5, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; }
+function pfGeom(r, rc) {
+  const w = pf.clientWidth, h = pf.clientHeight, L = 52, R = 14, T = 12, B = 22, total = rc.cum[rc.cum.length - 1] || 1;
+  const g = rc.samples.map((p) => groundAt(p[0], p[1]));
+  if (!pdrag || !pfRange) { let lo = Infinity, hi_ = -Infinity; rc.samples.forEach((p, k) => { lo = Math.min(lo, p[2], g[k]); hi_ = Math.max(hi_, p[2], g[k]); }); const pad = Math.max(30, (hi_ - lo) * 0.18); pfRange = { lo: lo - pad, hi: hi_ + pad }; }
+  const X = (d) => L + d / total * (w - L - R), Y = (z) => T + (pfRange.hi - z) / (pfRange.hi - pfRange.lo) * (h - T - B);
+  return { w, h, L, R, T, B, total, g, X, Y, zAt: (y) => pfRange.hi - (y - T) / (h - T - B) * (pfRange.hi - pfRange.lo) };
+}
+let brProfileBounds = null;
+function drawBridgeProfile(w, h, br) {
+  const L = 60, R = 40, T = 20, B = 28;
+  const gz = groundAt(br.x, br.y);
+  const minZ = Math.min(br.lowerZ, gz) - 40;
+  const maxZ = Math.max(br.upperZ, gz) + 40;
+  const Y = (z) => T + (maxZ - z) / (maxZ - minZ || 1) * (h - T - B);
+  const Z = (y) => maxZ - (y - T) / (h - T - B || 1) * (maxZ - minZ);
+
+  $('pfTitle').textContent = `Profil Jembatan / Terowongan · ${br.id}`;
+  $('pfInfo').textContent = `Seret balok atas/bawah untuk mengubah tinggi. Beda: ${m1(br.upperZ - br.lowerZ)} m · Roda mouse = atur tinggi`;
+
+  const step = niceStep((maxZ - minZ) / 10) * 10;
+  px.font = '11px system-ui'; px.textAlign = 'right'; px.strokeStyle = '#243044'; px.lineWidth = 1; px.fillStyle = '#7f90a8';
+  for (let z = Math.ceil(minZ / step) * step; z <= maxZ; z += step) {
+    const y = Y(z);
+    px.beginPath(); px.moveTo(L, y); px.lineTo(w - R, y); px.stroke();
+    px.fillText((z / 10).toFixed(0) + ' m', L - 8, y + 4);
+  }
+
+  const gy = Y(gz);
+  px.strokeStyle = '#10b98188'; px.lineWidth = 2; px.setLineDash([6, 4]);
+  px.beginPath(); px.moveTo(L, gy); px.lineTo(w - R, gy); px.stroke(); px.setLineDash([]);
+  px.fillStyle = '#10b981'; px.textAlign = 'left';
+  px.fillText(`Tanah asli: ${m1(gz)} m`, L + 10, gy - 6);
+
+  const spanW = Math.min(w - L - R - 60, Math.max(140, br.length * 0.7));
+  const cx0 = (L + w - R) / 2;
+  const x0 = cx0 - spanW / 2, x1 = cx0 + spanW / 2;
+
+  const pierH = Math.max(0, br.upperZ - br.lowerZ);
+  const yTop = Y(br.upperZ), yBot = Y(br.lowerZ);
+  if (pierH > 0) {
+    px.fillStyle = '#475569';
+    px.fillRect(cx0 - spanW * 0.35 - 8, yTop, 16, Math.max(0, yBot - yTop));
+    px.fillRect(cx0 + spanW * 0.35 - 8, yTop, 16, Math.max(0, yBot - yTop));
+  }
+
+  // Jalan bawah (terowongan)
+  px.fillStyle = '#1e293bcc';
+  px.fillRect(x0 - 15, yBot - 12, spanW + 30, 24);
+  px.strokeStyle = '#fb923c'; px.lineWidth = 2;
+  px.strokeRect(x0 - 15, yBot - 12, spanW + 30, 24);
+  px.fillStyle = '#fb923c'; px.textAlign = 'center';
+  px.font = 'bold 12px system-ui';
+  px.fillText(`⬇ Terowongan: ${m1(br.lowerZ)} m`, cx0, yBot + 4);
+
+  // Jalan atas (jembatan)
+  px.fillStyle = '#38bdf8cc';
+  px.fillRect(x0, yTop - 8, spanW, 16);
+  px.strokeStyle = '#38bdf8'; px.lineWidth = 2.5;
+  px.strokeRect(x0, yTop - 8, spanW, 16);
+  px.fillStyle = '#fff'; px.textAlign = 'center';
+  px.font = 'bold 12px system-ui';
+  px.fillText(`⬆ Jembatan Atas: ${m1(br.upperZ)} m`, cx0, yTop + 4);
+
+  // Indikator beda tinggi vertikal
+  const ax = x1 + 25;
+  px.strokeStyle = '#facc15'; px.lineWidth = 1.5;
+  px.beginPath(); px.moveTo(ax, yTop); px.lineTo(ax, yBot); px.stroke();
+  px.fillStyle = '#facc15'; px.font = 'bold 11px system-ui'; px.textAlign = 'left';
+  px.fillText(`Δ ${(pierH / 10).toFixed(1)} m`, ax + 6, (yTop + yBot) / 2 + 4);
+
+  brProfileBounds = { L, R, T, B, x0, x1, yTop, yBot, Z, minZ, maxZ, spanW };
+}
+
+function drawProfile() {
+  const dpr = window.devicePixelRatio || 1, w = pf.clientWidth, h = pf.clientHeight; px.setTransform(dpr, 0, 0, dpr, 0, 0); px.clearRect(0, 0, w, h);
+  const r = selRoad();
+  const br = selBridge();
+  if (br && !r) { drawBridgeProfile(w, h, br); return; }
+  if (!r) { px.fillStyle = '#64748b'; px.font = '13px system-ui'; px.textAlign = 'center'; px.fillText('Pilih jalan buatan atau jembatan untuk mengatur profil elevasi di sini.', w / 2, h / 2); $('pfTitle').textContent = 'Profil tinggi'; $('pfInfo').textContent = ''; return; }
+  const rc = RC.get(r.id); if (!rc) return; const G = pfGeom(r, rc), S = rc.samples;
+  $('pfTitle').textContent = `Profil tinggi · ${roadName(r)}`; $('pfInfo').textContent = 'seret titik ↑↓ untuk menaikkan/menurunkan jalan · roda mouse = ±0,5 m pada titik terpilih · ■ merah = tanah ditimbun, ■ biru = tanah dikeruk';
+  const step = niceStep((pfRange.hi - pfRange.lo) / 10) * 10;   // px, kelipatan meter
+  px.font = '11px system-ui'; px.textAlign = 'right'; px.strokeStyle = '#243044'; px.lineWidth = 1; px.fillStyle = '#7f90a8';
+  for (let z = Math.ceil(pfRange.lo / step) * step; z <= pfRange.hi; z += step) { const y = G.Y(z); px.beginPath(); px.moveTo(G.L, y); px.lineTo(w - G.R, y); px.stroke(); px.fillText((z / 10).toFixed(0) + ' m', G.L - 6, y + 4); }
+  px.textAlign = 'center'; const dstep = niceStep(G.total / 10) * 10; for (let d = 0; d <= G.total; d += dstep) { px.fillText((d / 10).toFixed(0) + ' m', G.X(d), h - 6); }
+  for (let k = 0; k < S.length - 1; k++) {
+    const d0 = rc.cum[k], d1 = rc.cum[k + 1], g0 = G.g[k], g1 = G.g[k + 1], z0 = S[k][2], z1 = S[k + 1][2], dz = (z0 - g0 + z1 - g1) / 2;
+    px.fillStyle = dz > 0 ? '#ef444455' : '#38bdf855'; px.beginPath(); px.moveTo(G.X(d0), G.Y(g0)); px.lineTo(G.X(d1), G.Y(g1)); px.lineTo(G.X(d1), G.Y(z1)); px.lineTo(G.X(d0), G.Y(z0)); px.closePath(); px.fill();
+  }
+  px.strokeStyle = '#a8a29e'; px.setLineDash([5, 4]); px.lineWidth = 1.5; px.beginPath(); S.forEach((p, k) => (k ? px.lineTo(G.X(rc.cum[k]), G.Y(G.g[k])) : px.moveTo(G.X(0), G.Y(G.g[0])))); px.stroke(); px.setLineDash([]);
+  px.lineWidth = 3.5; for (let k = 0; k < S.length - 1; k++) { const dd = rc.cum[k + 1] - rc.cum[k] || 1; px.strokeStyle = gradeCol((S[k + 1][2] - S[k][2]) / dd); px.beginPath(); px.moveTo(G.X(rc.cum[k]), G.Y(S[k][2])); px.lineTo(G.X(rc.cum[k + 1]), G.Y(S[k + 1][2])); px.stroke(); }
+  px.textAlign = 'center';
+  for (let i = 0; i < r.pts.length - 1; i++) { const a = rc.idx[i], b = rc.idx[i + 1], dd = rc.cum[b] - rc.cum[a] || 1, gr = (S[b][2] - S[a][2]) / dd; const mx = (G.X(rc.cum[a]) + G.X(rc.cum[b])) / 2; px.fillStyle = gradeCol(gr); px.fillText((gr * 100).toFixed(1) + '%', mx, Math.min(G.Y(S[a][2]), G.Y(S[b][2])) - 10); }
+  r.pts.forEach((p, i) => { const x = G.X(rc.cum[rc.idx[i]]), y = G.Y(p[2]), on = sel.pt === i; px.fillStyle = on ? '#fb923c' : '#fff'; px.strokeStyle = '#0b1220'; px.lineWidth = 2; px.beginPath(); px.arc(x, y, on ? 8 : 6.5, 0, 6.3); px.fill(); px.stroke(); px.fillStyle = '#cbd5e1'; px.fillText(String(i + 1), x, y + 3.5 - 14 * 0); });
+  G.cache = { rc };
+}
+function pfHit(e) { const r = selRoad(); if (!r) return null; const rc = RC.get(r.id), rect = pf.getBoundingClientRect(), mx = e.clientX - rect.left, my = e.clientY - rect.top, G = pfGeom(r, rc); let best = null, bd = 14; r.pts.forEach((p, i) => { const d = Math.hypot(G.X(rc.cum[rc.idx[i]]) - mx, G.Y(p[2]) - my); if (d < bd) { bd = d; best = i; } }); return { i: best, G, my }; }
+pf.addEventListener('pointerdown', (e) => {
+  const br = selBridge();
+  if (br && brProfileBounds) {
+    const rect = pf.getBoundingClientRect(), my = e.clientY - rect.top;
+    if (Math.abs(my - brProfileBounds.yTop) <= 16) { pf.setPointerCapture(e.pointerId); pdrag = { type: 'brTop', br, moved: false }; return; }
+    if (Math.abs(my - brProfileBounds.yBot) <= 16) { pf.setPointerCapture(e.pointerId); pdrag = { type: 'brBot', br, moved: false }; return; }
+  }
+  const r = selRoad(); if (!r) return;
+  const h = pfHit(e); if (!h || h.i === null) return;
+  pf.setPointerCapture(e.pointerId); sel.pt = h.i; pdrag = { i: h.i, moved: false }; syncPanel(); draw(); drawProfile();
+});
+pf.addEventListener('pointermove', (e) => {
+  if (!pdrag) return;
+  if (pdrag.type === 'brTop' || pdrag.type === 'brBot') {
+    const rect = pf.getBoundingClientRect(), my = e.clientY - rect.top;
+    const z = Math.round(brProfileBounds.Z(my));
+    if (pdrag.type === 'brTop') pdrag.br.upperZ = clamp(z, ZMIN, ZMAX);
+    else pdrag.br.lowerZ = clamp(z, ZMIN, ZMAX);
+    pdrag.moved = true;
+    schedule(); syncPanel(); return;
+  }
+  const r = selRoad(); if (!r) return;
+  const rc = RC.get(r.id), rect = pf.getBoundingClientRect(), G = pfGeom(r, rc);
+  pdrag.moved = true; r.pts[pdrag.i][2] = Math.round(clamp(G.zAt(e.clientY - rect.top), ZMIN, ZMAX)); schedule(true);
+});
+pf.addEventListener('pointerup', () => {
+  if (pdrag && pdrag.moved) commit();
+  pdrag = null; pfRange = null; schedule(true);
+});
+pf.addEventListener('wheel', (e) => {
+  const br = selBridge();
+  if (br && !selRoad()) {
+    e.preventDefault();
+    if (e.shiftKey) br.lowerZ = clamp(br.lowerZ + (e.deltaY < 0 ? 5 : -5), ZMIN, ZMAX);
+    else br.upperZ = clamp(br.upperZ + (e.deltaY < 0 ? 5 : -5), ZMIN, ZMAX);
+    commit(); schedule(); syncPanel(); return;
+  }
+  const r = selRoad(); if (!r || sel.pt < 0) return;
+  e.preventDefault(); r.pts[sel.pt][2] = Math.round(clamp(r.pts[sel.pt][2] + (e.deltaY < 0 ? 5 : -5), ZMIN, ZMAX)); commit(); pfRange = null; schedule(true);
+}, { passive: false });
+
+/* ------------------------------------------------------------ panel kanan & kiri */
+function buildPalette() {
+  const pal = $('palette'); pal.innerHTML = '';
+  for (const c of BASE.catalog) {
+    const d = document.createElement('div'); d.className = 'it'; d.draggable = true; d.dataset.kind = c.kind; d.innerHTML = `<span class="ic">${ICON[c.kind] || '▪'}</span>${c.name}<br><small>${(c.w / 10).toFixed(0)}×${(c.h / 10).toFixed(0)} m</small>`;
+    d.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', 'kind:' + c.kind); e.dataTransfer.effectAllowed = 'copy'; });
+    d.addEventListener('click', () => arm(c.kind)); pal.appendChild(d);
+  }
+}
+function renderRoadList() {
+  const l = $('roadList'); l.innerHTML = E.roads.length ? '' : '<div class="muted">Belum ada. Pilih 🛣️ Gambar Jalan.</div>';
+  for (const r of E.roads) { const rc = RC.get(r.id), len = rc ? rc.cum[rc.cum.length - 1] : 0, d = document.createElement('div'); d.className = 'ri' + (sel && sel.t === 'road' && sel.id === r.id ? ' on' : ''); d.innerHTML = `${r.ref ? '🔧 ' : ''}${roadName(r)}<small>${(len / 10).toFixed(0)} m · ${r.pts.length} titik${r.ref ? ' · bawaan' : ''}</small>`;
+    d.addEventListener('click', () => { setTool('select'); sel = { t: 'road', id: r.id, pt: -1 }; focusRoad(r); syncPanel(); draw(); drawProfile(); }); l.appendChild(d); }
+}
+function focusRoad(r) { const xs = r.pts.map((p) => p[0]), ys = r.pts.map((p) => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), w = cv.clientWidth, h = cv.clientHeight; view.s = clamp(Math.min(w / (x1 - x0 + 600), h / (y1 - y0 + 600)), fitS * 0.7, 3); view.x = (x0 + x1) / 2 - w / 2 / view.s; view.y = (y0 + y1) / 2 - h / 2 / view.s; }
+function updStats() { $('stats').innerHTML = `Objek ditambah: <b>${E.objects.length}</b> · dihapus: <b>${E.removed.length}</b> · dipindah: <b>${Object.keys(E.moved).length}</b> · jalan buatan/diedit: <b>${E.roads.length}</b>`; $('legend').innerHTML = '<i style="background:#4ade80"></i>landai <i style="background:#facc15"></i>4–8% <i style="background:#fb923c"></i>8–12% <i style="background:#ef4444"></i>&gt;12% · tanah: <i style="background:#ef4444"></i>ditimbun <i style="background:#38bdf8"></i>dikeruk'; }
+function setVal(el, v) { if (document.activeElement !== el) el.value = v; }
+function syncPanel() {
+  const r = selRoad(), isObj = sel && (sel.t === 'obj' || sel.t === 'base');
+  $('pBRoad').classList.toggle('hide', !(sel && sel.t === 'broad'));
+  if (sel && sel.t === 'broad') { const b = baseRoad(sel.id); if (b) { let len = 0; for (let i = 1; i < b.pts.length; i++) len += Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]); $('bName').textContent = b.name; $('bKind').textContent = b.kind; $('bW').textContent = (b.w / 10).toFixed(1) + ' m'; $('bLen').textContent = (len / 10).toFixed(0) + ' m'; } }
+  $('pInfo').classList.toggle('hide', !!sel); $('pObj').classList.toggle('hide', !isObj); $('pRoad').classList.toggle('hide', !r); $('pPt').classList.toggle('hide', !(r && sel.pt >= 0));
+  const isBridge = sel && sel.t === 'bridge';
+  $('pBridge').classList.toggle('hide', !isBridge);
+  const br = selBridge();
+  if (br) {
+    $('brId').textContent = br.id;
+    setVal($('brUpperRoad'), br.upperRoad || '');
+    setVal($('brLowerRoad'), br.lowerRoad || '');
+    setVal($('brLen'), Math.round(br.length / 10));
+    setVal($('brWidth'), (br.width / 10).toFixed(1));
+    setVal($('brLowerWidth'), ((br.lowerWidth || br.width) / 10).toFixed(1));
+    setVal($('brUpperZ'), (br.upperZ / 10).toFixed(1));
+    setVal($('brLowerZ'), (br.lowerZ / 10).toFixed(1));
+    setVal($('brAngle'), Math.round(br.angle / DEG));
+    setVal($('brLowerAngle'), Math.round(br.lowerAngle / DEG));
+  }
+  if (isObj) {
+    const base = sel.t === 'base', o = base ? baseByKey.get(sel.k) : objById(sel.id); if (!o) return; const c = CAT[o.kind], lock = base && o.lock, grp = base && o.grp;
+    $('oTitle').textContent = (ICON[o.kind] || '') + ' ' + (c ? c.name : o.kind) + (base ? ' (bawaan)' : ' (baru)');
+    $('oLock').textContent = grp ? '🏠 Rumah misi — bisa dipindah (pintu, jalan masuk, kendaraan parkir & titik awal ikut bergeser), tidak bisa dihapus.' : '🔒 Terhubung ke pintu / interior / misi — hanya bisa dilihat.';
+    $('oLock').classList.toggle('hide', !(lock || grp)); $('oFields').classList.toggle('hide', base); $('oDup').classList.toggle('hide', base); $('oDel').classList.toggle('hide', !!(lock || grp));
+    $('oRestore').classList.toggle('hide', !(base && E.moved[sel.k]));
+    if (!base) { setVal($('oLabel'), o.label || ''); setVal($('oColor'), o.color || '#888888'); $('oColorRow').classList.toggle('hide', !(c && c.color)); setVal($('oW'), (o.w / 10).toFixed(1)); setVal($('oH'), (o.h / 10).toFixed(1)); }
+  }
+  if (r) {
+    const rc = RC.get(r.id), isRef = !!r.ref;
+    $('rNameRow').classList.toggle('hide', isRef); $('rKindRow').classList.toggle('hide', isRef); $('rTitle').textContent = isRef ? `🔧 Jalan bawaan: ${roadName(r)}` : '🛣️ Jalan buatan';
+    $('rDel').textContent = isRef ? '↺ Kembalikan ke asli' : '🗑️ Hapus jalan'; $('rW').max = isRef ? 26 : 20;
+    setVal($('rName'), r.name || ''); $('rKind').value = r.kind || 'local'; setVal($('rW'), r.w / 10); $('rWv').textContent = (r.w / 10).toFixed(1) + ' m';
+    $('rLen').textContent = rc ? (rc.cum[rc.cum.length - 1] / 10).toFixed(0) + ' m' : '–'; $('rPts').textContent = r.pts.length;
+    let mg = 0, zl = Infinity, zh = -Infinity; if (rc) { for (let k = 0; k < rc.samples.length - 1; k++) { const d = rc.cum[k + 1] - rc.cum[k] || 1; mg = Math.max(mg, Math.abs(rc.samples[k + 1][2] - rc.samples[k][2]) / d); } for (const p of r.pts) { zl = Math.min(zl, p[2]); zh = Math.max(zh, p[2]); } }
+    $('rGrade').textContent = (mg * 100).toFixed(1) + ' %'; $('rGrade').style.color = gradeCol(mg); $('rZ').textContent = `${m1(zl)} – ${m1(zh)} m`; $('rDone').classList.toggle('hide', drawing !== r.id);
+    if (sel.pt >= 0 && r.pts[sel.pt]) { const p = r.pts[sel.pt]; $('tIdx').textContent = `${sel.pt + 1} / ${r.pts.length}`; $('tPos').textContent = `${Math.round(p[0])}, ${Math.round(p[1])}`; $('tGround').textContent = m1(groundAt(p[0], p[1])) + ' m'; setVal($('tZ'), m1(p[2])); }
+  }
+}
+function curRoadEdit(fn, terrain = true) { const r = selRoad(); if (!r) return; fn(r); commit(); pfRange = null; schedule(terrain); syncPanel(); }
+function curObjEdit(fn) { if (!sel || sel.t !== 'obj') return; const o = objById(sel.id); if (!o) return; fn(o, CAT[o.kind]); commit(); schedule(E.roads.length > 0); }
+$('oLabel').addEventListener('input', (e) => curObjEdit((o) => { o.label = e.target.value; }));
+$('oColor').addEventListener('input', (e) => curObjEdit((o) => { o.color = e.target.value; }));
+$('oW').addEventListener('change', (e) => curObjEdit((o, c) => { o.w = clamp(+e.target.value * 10 || c.w, c.min, c.max); o.x = Math.min(o.x, W - o.w); }));
+$('oH').addEventListener('change', (e) => curObjEdit((o, c) => { o.h = clamp(+e.target.value * 10 || c.h, c.min, c.max); o.y = Math.min(o.y, H - o.h); }));
+$('oDel').addEventListener('click', deleteSel);
+$('oDup').addEventListener('click', () => curObjEdit((o) => { const n = { ...o, id: uid('o'), x: clamp(o.x + o.w + 10, 0, W - o.w) }; E.objects.push(n); sel = { t: 'obj', id: n.id }; syncPanel(); }));
+$('oRestore').addEventListener('click', () => { if (sel && sel.t === 'base') { delete E.moved[sel.k]; commit(); schedule(true); syncPanel(); } });
+$('rName').addEventListener('input', (e) => curRoadEdit((r) => { r.name = e.target.value.slice(0, 40); }, false));
+$('rKind').addEventListener('change', (e) => curRoadEdit((r) => { r.kind = e.target.value; }, false));
+$('rW').addEventListener('input', (e) => curRoadEdit((r) => { r.w = Math.round(+e.target.value * 10); }));
+$('rDel').addEventListener('click', deleteSel); $('bEdit').addEventListener('click', () => sel && sel.t === 'broad' && editBaseRoad(sel.id)); $('rDone').addEventListener('click', () => { finishDrawing(); hint(); });
+$('rFlat').addEventListener('click', () => curRoadEdit((r) => r.pts.forEach((p) => { p[2] = Math.round(groundAt(p[0], p[1])); })));
+$('rRamp').addEventListener('click', () => curRoadEdit((r) => { const a = r.pts[0][2], b = r.pts[r.pts.length - 1][2], rc = RC.get(r.id), tot = rc.cum[rc.cum.length - 1] || 1; r.pts.forEach((p, i) => { p[2] = Math.round(a + (b - a) * rc.cum[rc.idx[i]] / tot); }); }));
+$('rSmooth').addEventListener('click', () => curRoadEdit((r) => { const z = r.pts.map((p) => p[2]); r.pts.forEach((p, i) => { if (i > 0 && i < z.length - 1) p[2] = Math.round((z[i - 1] + 2 * z[i] + z[i + 1]) / 4); }); }));
+const setZ = (v) => curRoadEdit((r) => { if (sel.pt >= 0) r.pts[sel.pt][2] = Math.round(clamp(v, ZMIN, ZMAX)); });
+$('tZ').addEventListener('change', (e) => setZ(+e.target.value * 10)); $('zUp').addEventListener('click', () => setZ(selRoad().pts[sel.pt][2] + 5)); $('zDn').addEventListener('click', () => setZ(selRoad().pts[sel.pt][2] - 5));
+$('tGnd').addEventListener('click', () => { const p = selRoad().pts[sel.pt]; setZ(groundAt(p[0], p[1])); }); $('tDel').addEventListener('click', () => { const r = selRoad(); if (r && sel.pt >= 0) delPoint(r, sel.pt); });
+
+function curBrEdit(fn) { const b = selBridge(); if (!b) return; fn(b); commit(); schedule(); syncPanel(); }
+$('brLen').addEventListener('change', (e) => curBrEdit((b) => { b.length = Math.max(20, Math.round(+e.target.value * 10)); }));
+$('brWidth').addEventListener('change', (e) => curBrEdit((b) => { b.width = Math.max(30, Math.round(+e.target.value * 10)); }));
+$('brLowerWidth').addEventListener('change', (e) => curBrEdit((b) => { b.lowerWidth = Math.max(30, Math.round(+e.target.value * 10)); }));
+$('brUpperZ').addEventListener('change', (e) => curBrEdit((b) => { b.upperZ = Math.round(+e.target.value * 10); }));
+$('brLowerZ').addEventListener('change', (e) => curBrEdit((b) => { b.lowerZ = Math.round(+e.target.value * 10); }));
+$('brAngle').addEventListener('change', (e) => curBrEdit((b) => { b.angle = +e.target.value * DEG; }));
+$('brLowerAngle').addEventListener('change', (e) => curBrEdit((b) => { b.lowerAngle = +e.target.value * DEG; }));
+$('brUpperRoad').addEventListener('input', (e) => curBrEdit((b) => { b.upperRoad = e.target.value.slice(0, 40); }));
+$('brLowerRoad').addEventListener('input', (e) => curBrEdit((b) => { b.lowerRoad = e.target.value.slice(0, 40); }));
+$('brSnap').addEventListener('click', () => { const b = selBridge(); if (b) snapBridgeToRoads(b); });
+$('brDel').addEventListener('click', deleteSel);
+
+/* ------------------------------------------------------------ toolbar & keyboard */
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 3800); }
+document.querySelectorAll('#tools button').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+$('newRoad').addEventListener('click', () => { setTool('road'); toast('Klik di peta untuk menaruh titik pertama jalan.'); });
+$('undo').addEventListener('click', () => undo(-1)); $('redo').addEventListener('click', () => undo(1));
+$('zin').addEventListener('click', () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1.4)); $('zout').addEventListener('click', () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1 / 1.4)); $('zfit').addEventListener('click', fit);
+$('save').addEventListener('click', save);
+$('reset').addEventListener('click', async () => { if (!confirm('Hapus SEMUA editan peta (objek, jalan buatan, perubahan tanah)? Peta kembali seperti aslinya.')) return; E = normalize({}); sel = null; drawing = null; commit(); await save(); });
+for (const id of ['lyTerrain', 'lyObj', 'lyLabel']) $(id).addEventListener('change', draw);
+$('lyDelta').addEventListener('change', () => { paintTerrain(); draw(); });
+window.addEventListener('keydown', (e) => {
+  if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.type !== 'range' && document.activeElement.type !== 'checkbox') return;
+  if (e.key === 'Escape') { armed = null; document.querySelectorAll('.pal .it').forEach((b) => b.classList.remove('armed')); finishDrawing(); setTool('select'); sel = null; syncPanel(); draw(); drawProfile(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(e.shiftKey ? 1 : -1); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); undo(1); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
+});
+window.addEventListener('resize', resize);
+load().catch((err) => { $('saveState').textContent = 'Gagal memuat: ' + err; console.error(err); });
+hint();
+})();
+</script>
+</body>
+</html>

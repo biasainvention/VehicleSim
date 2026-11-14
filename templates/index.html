@@ -1,1 +1,309 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lintas Salatiga — Sopir Trailer Dunia Terbuka{% if mode3d %} (3D){% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body class="{{ 'mode3d' if mode3d else 'mode2d' }} intro-on">
+<div id="stage">
+  <canvas id="game3d"></canvas>
+  <canvas id="game"></canvas>
 
+  <div id="hud">
+    <div class="panel" id="missionPanel">
+      <div id="loc">📍 –</div>
+      <div class="label">Misi <span id="mNo">–</span></div>
+      <div id="mText">–</div>
+      <div id="hint" class="hint"></div>
+    </div>
+    <div class="panel stats">
+      <div><span class="label">Jam</span><b id="clock">07.00</b></div>
+      <div><span class="label">Waktu misi</span><b id="time">0.0 s</b></div>
+      <div><span class="label">Kecepatan</span><b id="speed">0 km/j</b></div>
+      <div><span class="label">Transmisi</span>
+        <div id="prnd"><span data-g="P">P</span><span data-g="R">R</span><span data-g="N">N</span><span data-g="D">D</span></div>
+      </div>
+      <div><span class="label">Skor</span><b id="score">0</b></div>
+      <div><span class="label">Benturan</span><b id="damage">0</b></div>
+    </div>
+  </div>
+
+  <div id="pedals" class="panel">
+    <div class="vrow"><b id="vehName">Jalan kaki</b><button id="wiperBtn" type="button" class="foodQuickBtn wiperBtn hidden" title="Wiper kaca depan (X)">🧹</button><b id="money">Rp 0</b></div>
+    <div class="vrow debtRow"><span></span><span id="debt"></span></div>
+    <div class="row"><span class="label" id="fuelText">BBM –</span><div class="bar"><i id="fuelBar" class="fill"></i></div></div>
+    <div class="row"><span class="label" id="hpText">Kondisi –</span><div class="bar"><i id="hpBar" class="fill"></i></div></div>
+    <div class="row clickable" id="energyRow" title="Klik untuk Pesan Delivery Food (U)"><span class="label" id="energyText">Tenaga</span><div class="bar"><i id="energyBar" class="fill"></i></div><button id="foodQuickBtn" type="button" class="foodQuickBtn" title="Pesan Delivery Food (U)">🛵</button><button id="taxiQuickBtn" type="button" class="foodQuickBtn taxiQuickBtn" title="Pesan taksi ke tempat pilihan">🚕</button></div>
+    <div class="row"><span class="label">Setir</span><div class="bar steer"><i id="steerMark"></i></div></div>
+    <div class="row"><span class="label">Gas</span><div class="bar"><i id="thrBar" class="fill gas"></i></div></div>
+    <div class="row"><span class="label">Rem</span><div class="bar"><i id="brkBar" class="fill brake"></i></div></div>
+    <div id="padStatus" class="pad">Gamepad belum terdeteksi — keyboard dan mouse tersedia</div>
+  </div>
+
+  <div id="mapWrap" class="panel">
+    <canvas id="minimap"></canvas>
+  </div>
+
+  <button id="mouseControlToggle" type="button" aria-expanded="false">🖱 Kontrol Mouse</button>
+  <div id="mouseControls" class="panel hidden" aria-label="Kontrol mouse">
+    <div class="mouseControlsHead"><b>Kontrol Mouse</b><button id="mouseControlClose" type="button" aria-label="Tutup kontrol mouse">×</button></div>
+    <div class="mouseControlGroup">
+      <span>Gerak / kemudi</span>
+      <div class="mouseControlGrid movement">
+        <button type="button" data-keys="KeyW,ArrowUp" aria-label="Maju atau gas">▲<small>Maju / gas</small></button>
+        <button type="button" data-keys="KeyA,ArrowLeft" aria-label="Kiri">◀<small>Kiri</small></button>
+        <button type="button" data-keys="KeyS,ArrowDown" aria-label="Mundur atau rem">▼<small>Mundur / rem</small></button>
+        <button type="button" data-keys="KeyD,ArrowRight" aria-label="Kanan">▶<small>Kanan</small></button>
+      </div>
+    </div>
+    <div class="mouseControlGroup">
+      <span>Aksi kendaraan &amp; pemain</span>
+      <div class="mouseControlGrid">
+        <button type="button" data-keys="Space" title="Aksi / interaksi (tahan untuk mengisi atau memasak)">A <small>Aksi</small></button>
+        <button type="button" data-keys="ShiftLeft,KeyB" title="Rem tangan / lari">B <small>Rem tangan / lari</small></button>
+        <button type="button" data-keys="KeyH,KeyX" title="Klakson / wiper">X <small>Klakson / wiper</small></button>
+        <button type="button" data-keys="KeyF" title="Naik atau turun kendaraan">Y <small>Kendaraan</small></button>
+        <button type="button" data-keys="KeyQ" title="Gigi / pilihan sebelumnya">LB <small>Gigi − / atas</small></button>
+        <button type="button" data-keys="KeyE" title="Gigi / pilihan berikutnya">RB <small>Gigi + / bawah</small></button>
+      </div>
+    </div>
+    <div class="mouseControlGroup">
+      <span>Aksi lain</span>
+      <div class="mouseControlGrid utility">
+        <button type="button" data-keys="KeyP" title="Jeda / lanjut">Ⅱ <small>Jeda</small></button>
+        <button type="button" data-keys="KeyR" title="Ulang misi">↻ <small>Ulang misi</small></button>
+        <button type="button" data-keys="KeyM" title="Peta rute">🗺 <small>Peta</small></button>
+        <button type="button" data-keys="KeyZ" title="Zoom kamera">＋ <small>Zoom</small></button>
+        <button type="button" data-keys="KeyT,KeyV" title="Ganti tampilan kamera">◉ <small>Kamera</small></button>
+        <button type="button" data-keys="KeyG" title="Panggil mobil tangki">⛽ <small>Panggil BBM</small></button>
+        <button type="button" data-keys="KeyU" title="Pesan makanan / mode kurir">🛵 <small>Delivery</small></button>
+        <button type="button" data-keys="KeyC" title="Jadi sopir taksi / ojek">🚕 <small>Taksi</small></button>
+        <button type="button" data-keys="KeyL" title="Papan skor">🏆 <small>Skor</small></button>
+      </div>
+    </div>
+    <div class="mouseControlsNote">Tahan tombol untuk aksi berkelanjutan. Klik tombol aksi untuk sekali tekan.</div>
+  </div>
+
+  <div id="bigmapWrap" class="hidden"><canvas id="bigmap"></canvas></div>
+
+  <div id="foodModal" class="hidden">
+    <div class="fcard">
+      <div class="fhead">
+        <div class="ftitle">
+          <h2>🛵 Salatiga Food Delivery — Pesan Antar Makanan</h2>
+          <div class="fsub">Pesan makanan saat tenaga menipis · Kurir motor antar langsung ke lokasimu!</div>
+        </div>
+        <button id="fClose" type="button">✕ Keluar (B / Esc)</button>
+      </div>
+
+      <div class="ftabs">
+        <button id="fTabOrder" class="ftab on" type="button">🍲 Pesan Makanan (Antar ke Sini)</button>
+        <button id="fTabJob" class="ftab" type="button">💼 Jadi Kurir Delivery Food (Cari Uang &amp; Tenaga)</button>
+      </div>
+
+      <div id="fOrderView">
+        <div class="fstatus">
+          <div class="fstat-item">💰 Uang: <b id="fMoney">Rp 0</b></div>
+          <div class="fstat-item">⚡ Tenaga saat ini: <b id="fEnergy">0%</b></div>
+          <div class="fstat-item">📍 Lokasi antar: <b id="fLoc">–</b></div>
+        </div>
+        <div class="fmenu-title">Pilih menu untuk memulihkan tenaga:</div>
+        <div id="fList" class="flist"></div>
+        <div class="ffoot">
+          <div class="finfo">
+            <div>Ongkos kirim kurir motor: <b>Rp 5.000</b></div>
+            <div class="fcourier-note">🛵 Kurir motor berangkat dari warung / resto terdekat &amp; menyusul langsung ke lokasimu</div>
+          </div>
+          <div class="factions">
+            <button id="fOrder" type="button">Pesan Sekarang (A / Enter)</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="fJobView" class="hidden">
+        <div class="fjob-card">
+          <div class="fjob-head">
+            <h3 id="fJobTitle">💼 Lowongan Kurir Makanan Salatiga Express</h3>
+            <p id="fJobDesc">Ambil pesanan makanan dari warung dan antarkan ke pelanggan. Setiap pesanan selesai memberimu ongkos kirim dan jatah makan gratis untuk memulihkan tenaga!</p>
+          </div>
+          <div id="fJobDetails" class="fjob-details"></div>
+          <div class="fjob-actions">
+            <button id="fJobAccept" type="button">Ambil Order Ini (A / Enter)</button>
+            <button id="fJobCancel" class="hidden" type="button">Batalkan Orderan (B)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="small fhelp">
+        Stik / D-pad / Panah: Pilih · A / Spasi / Enter: Pilih · B / Esc / U: Tutup · 1–6: Pilih menu langsung
+      </div>
+    </div>
+  </div>
+
+  <div id="taxiRideModal" class="hidden">
+    <section class="taxiRideCard" aria-labelledby="taxiRideTitle">
+      <header class="taxiRideHead">
+        <div><h2 id="taxiRideTitle">🚕 Taksi Salatiga</h2><p>Pilih tujuan perjalanan</p></div>
+        <button id="taxiRideClose" type="button" aria-label="Tutup">×</button>
+      </header>
+      <label for="taxiDestination">Tujuan</label>
+      <select id="taxiDestination"></select>
+      <div class="taxiRideFare"><span>Ongkos</span><b id="taxiFare">–</b></div>
+      <button id="taxiBookBtn" class="taxiBookBtn" type="button">Pesan taksi</button>
+      <div class="small taxiRideHelp">Panah pilih tujuan · Tab lalu Enter pesan · Esc tutup</div>
+    </section>
+  </div>
+
+  <div id="builder" class="hidden">
+    <div class="bcard">
+      <div class="bhead"><h2>🔧 Bengkel Rakit Tingkir — buat kendaraanmu</h2><button id="bClose" type="button">Keluar (B)</button></div>
+      <div class="bbody">
+        <canvas id="bPreview" width="520" height="330"></canvas>
+        <div class="bside">
+          <div id="bSlots"></div>
+          <div id="bStats"></div>
+        </div>
+      </div>
+      <div id="bWarn"></div>
+      <div class="bfoot"><span id="bCost"></span><button id="bBuild" type="button">Rakit kendaraan (A)</button></div>
+      <div class="small">Stik kiri / D-pad ↑↓ pilih blok · ←→ ganti pilihan · A rakit · B keluar &nbsp;|&nbsp; keyboard: panah · Spasi · Esc · klik juga bisa</div>
+    </div>
+  </div>
+
+  <div id="learn" class="hidden">
+    <div class="lcard">
+      <div class="lhead"><h2 id="lTitle">✏️ Belajar</h2><span id="lInfo"></span>
+        <span><button id="lSay" type="button">🔊 Dengarkan (X)</button> <button id="lClose" type="button">Keluar (B)</button></span></div>
+      <div id="lBody"></div>
+      <div class="small">Stik / D-pad / panah: pilih · A / Spasi: jawab · tombol 1–4 juga bisa · X: bacakan soal · B / Esc: keluar · klik juga bisa</div>
+    </div>
+  </div>
+
+  <div id="fmxModal" class="hidden">
+    <div class="fmx-card">
+      <div class="fmx-head">
+        <h2 id="fmxTitle">🔬 PT Formulatrix Indonesia — Robotics &amp; Automation Lab</h2>
+        <span id="fmxSalaryBadge" class="fmx-salary-badge">Gaji: Rp 0</span>
+        <button id="fmxClose" type="button">Keluar (B / Esc)</button>
+      </div>
+      <div id="fmxBody"></div>
+      <div class="small fhelp" style="margin-top:14px;">
+        Stik / Panah: Pilih · A / Spasi / Enter: Aksi · B / Esc: Keluar
+      </div>
+    </div>
+  </div>
+
+  <div id="tvPip" class="hidden"><div id="tvTitle">📺</div><div class="tvhole"></div>
+    <div class="small">A dekat TV: matikan · X: channel lain · LB/RB (Q/E): video lain · Y (F): layar lebar · klik di sini: channel lain</div></div>
+  <div id="tvWrap" class="hidden"></div>
+
+  <div id="dockPanel" class="panel hidden"><div id="dockTitle"></div><canvas id="dockCanvas" width="280" height="150"></canvas><div id="dockStatus"></div></div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div id="banner" class="hidden"></div>
+
+  <div id="board" class="panel hidden">
+    <h3>Papan Skor</h3>
+    <ol id="boardList"></ol>
+    <div class="label">L untuk menutup</div>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <div class="card">
+      <h1>Lintas Salatiga{% if mode3d %} <span class="tag3d">3D</span>{% endif %}</h1>
+      <div class="tagline">Sopir Trailer · Dunia Terbuka Salatiga – Tengaran – Kopeng</div>
+      <div class="modeSwitch small">Tampilan 3D · tahan R3 (atau T) = tampak atas untuk parkir · <button id="replayIntro" type="button" class="linkBtn">🎬 Putar ulang intro</button></div>
+      <p>Sopir mulai di rumahnya di Tingkir. Ambil trailer <b class="orange">oranye</b> di Gudang Ekspedisi
+        Salatiga (Jl. Jend. Sudirman), antar lewat jalan raya Salatiga–Solo ke pabrik di
+        <b class="green">Kawasan Industri Butuh, Tengaran</b>. Isi BBM di SPBU Tingkir / Tengaran, jajan di
+        Warung Klero atau Pasar Kembangsari. Masuk ke warung, toko, Luwes, hotel, Kumon Sukowati, sekolah, atau dealer
+        Mitsubishi; nongkrong di Alun-alun Pancasila; lewat jalan tol Tingkir–Boyolali. Ada truk, sedan, Mirage, Innova,
+        pick-up, truk mini, dan MAN HX 8x8 di rumah dekat GT Boyolali, serta bus kuning di Terminal Bus Tingkir yang kini bisa kamu kendarai; pesawat, Su-57, dan helikopter di Bandara Salatiga — atau rakit kendaraanmu sendiri di Bengkel Rakit Tingkir. Lampu lalu lintas di tiap
+        simpang (terobos merah = tilang). Tabrakan keras merusak kendaraan sampai hancur & terbakar — panggil montir (A). Uang bekal Rp 90.000.000. Siang & malam berganti (1 hari = 12 menit).
+        Peta kini lebih luas: jalan berkelok menanjak ke <b>Kopeng</b>, <b>AMP aspal</b> di Jl. Raya Suruh, dan lahan kosong
+        tempat kamu membangun jalan sendiri dengan <b>asphalt paver</b> (hotmix diantar dump truck; MAN HX juga bisa mengangkat bak dan menderek trailer atau kendaraan yang parkir).</p>
+      <div id="whatsNew" class="small">🆕 Versi <b>{{ version }}</b> · 🚌 bus Terminal Tingkir bisa dikendarai · 🗺️ Editor Peta (/editor) · 🚗 Editor Kendaraan (/vehicle-editor) · 🍳 dapur rumah: masak untuk tambah tenaga · 🧹 wiper kaca (X) · 🚦 lampu lalu lintas di <span id="nSig">?</span> simpang ·
+        🔧 Bengkel Rakit Tingkir (seberang jalan rumah sopir) · 🚕 layanan taksi · 🚁 helikopter bandara · 🏍️ sepeda motor · 💥 kendaraan bisa hancur · ✏️ belajar baca &amp; hitung · 📺 TV YouTube · ⛰️ Kopeng · 🛣️ paver · 🚛 mobil tangki BBM · 🛵 mode delivery food (pesan makan / kurir untuk tambah tenaga)</div>
+      <div class="small">🗺️ <a href="/editor" target="_blank" style="color:#7dd3fc">Editor Peta</a> — tambah bangunan/pohon, gambar jalan spline, atur tanjakan &amp; turunan (muat ulang game setelah menyimpan)</div>
+      <div class="small">🚗 <a href="/vehicle-editor" target="_blank" style="color:#7dd3fc">Editor Kendaraan</a> — bangun kendaraan dari nol atau ubah aset game (truk, mobil, bus, dll.), lalu simpan ke game untuk dikendarai</div>
+      <div id="verWarn" class="hidden"></div>
+      <div id="resumeBox" class="hidden">
+        <button id="resumeBtn">▶ Lanjutkan</button>
+        <div id="resumeInfo" class="small"></div>
+        <div class="small">A / Enter = lanjutkan · X / N = main baru</div>
+      </div>
+      <input id="nameInput" maxlength="20" placeholder="Nama pemain">
+      <button id="startBtn">Mulai</button>
+      <div class="hint">atau tekan <b>A</b> di gamepad / <b>Enter</b> — klik Mulai dengan mouse agar suara aktif</div>
+      <div class="small">Tanpa gamepad: gunakan keyboard, atau buka tombol <b>🖱 Kontrol Mouse</b> saat bermain. Tahan tombol mouse untuk gas dan aksi berkelanjutan.</div>
+      <table class="controls">
+        <tr><th></th><th>Gamepad</th><th>Keyboard</th></tr>
+        <tr><td>Setir / jalan kaki</td><td>Stik kiri / D-pad</td><td>Panah / WASD</td></tr>
+        <tr><td>Gas / lari</td><td>RT</td><td>↑ W / Shift</td></tr>
+        <tr><td>Rem</td><td>LT</td><td>↓ / S</td></tr>
+        <tr><td>Pesawat: pitch · Helikopter: naik / turun</td><td>D-pad ↑ / ↓</td><td>Q / E</td></tr>
+        <tr><td>Helikopter: maju / mundur</td><td>RT / LT</td><td>W / S</td></tr>
+        <tr><td>Pesawat / helikopter: bank kiri / kanan</td><td>Stik kiri ← / →</td><td>A / D</td></tr>
+        <tr><td>Pesawat: kecepatan minimum v0 saat mengudara</td><td>Otomatis</td><td>Otomatis</td></tr>
+        <tr><td>Gigi PRND (kendaraan darat)</td><td>RB / D-pad ↓ = ke D · LB / D-pad ↑ = ke P</td><td>E / Q</td></tr>
+        <tr><td>Naik / turun kendaraan</td><td>Y</td><td>F</td></tr>
+        <tr><td>Aksi (trailer, crane towing, dump truck, isi BBM, masuk bangunan, beli di kasir)</td><td>A (tahan untuk isi BBM / duduk · tekan untuk tidur &amp; bangun)</td><td>Spasi</td></tr>
+        <tr><td>Wiper kaca depan (mobil, bus, truk box, MAN HX, kendaraan CAD ber-wiper)</td><td>X (juga klakson) · atau klik 🧹 di panel kendaraan</td><td>X · atau klik 🧹 di panel kendaraan</td></tr>
+        <tr><td>Klakson / beli item ke-2</td><td>X / L3</td><td>H</td></tr>
+        <tr><td>Rem tangan</td><td>B</td><td>Shift</td></tr>
+        <tr><td>Putar kamera 3D</td><td>Stik kanan ← →</td><td>J / K · geser mouse</td></tr>
+        <tr><td>Kamera naik / turun (3D) · zoom (2D)</td><td>Stik kanan ↑ ↓</td><td>I / O</td></tr>
+        <tr><td>Zoom kamera</td><td>R3 (tekan)</td><td>Z</td></tr>
+        <tr><td>Tampak atas (parkir) ↔ kamera belakang</td><td>R3 (tahan ½ detik)</td><td>T / V</td></tr>
+        <tr><td>Dump truck: muat hotmix di silo AMP · tuang ke paver</td><td>A</td><td>Spasi</td></tr>
+        <tr><td>Paver: turunkan screed & gelar aspal / berhenti</td><td>A</td><td>Spasi</td></tr>
+        <tr><td>Road milling: turunkan drum & kupas aspal jalan buatan (dibayar per meter) / berhenti</td><td>A</td><td>Spasi</td></tr>
+        <tr><td>Panggil mobil tangki BBM (saat berhenti / di dekat kendaraan)</td><td>tahan X (klakson) · X saat jalan kaki</td><td>G</td></tr>
+        <tr><td>Truk Tangki BBM: pasang / lepas selang ke kendaraan dekat</td><td>A</td><td>Spasi</td></tr>
+        <tr><td>Mode Delivery Food (pesan makan / jadi kurir)</td><td>U / klik Tenaga 🛵</td><td>U / klik Tenaga 🛵</td></tr>
+        <tr><td>Pesan taksi ke tempat pilihan</td><td>Klik Ikon 🚕</td><td>Klik Ikon 🚕</td></tr>
+        <tr><td>Jadi sopir taksi / ojek</td><td>–</td><td>C</td></tr>
+        <tr><td>Dealer: pilih model</td><td>LB / RB</td><td>Q / E</td></tr>
+        <tr><td>Bengkel: pilih blok · ganti · rakit · keluar</td><td>D-pad ↑↓ · ←→ · A · B</td><td>panah · Spasi · Esc</td></tr>
+        <tr><td>Panggil montir (kendaraan rusak / hancur)</td><td>A di dekat kendaraan</td><td>Spasi</td></tr>
+        <tr><td>Sekolah / Kumon: belajar di papan tulis</td><td>A · D-pad pilih · A jawab · X dengarkan</td><td>Spasi · panah / 1–4 · H</td></tr>
+        <tr><td>TV YouTube: nyala/mati · channel · video lain · layar lebar</td><td>A · X · LB/RB · Y</td><td>Spasi · H · Q/E · F</td></tr>
+        <tr><td>Dapur rumah: masak &amp; makan (tenaga naik) · ganti menu</td><td>tahan A di kompor · X</td><td>tahan Spasi · H</td></tr>
+        <tr><td>Beli bahan masak (Pasar Kembangsari / Toko Luwes)</td><td>Y di kasir</td><td>F di kasir</td></tr>
+        <tr><td>Peta rute</td><td>Back / Select</td><td>M</td></tr>
+        <tr><td>Papan skor</td><td>(saat jeda)</td><td>L</td></tr>
+        <tr><td>Jeda (Y saat jeda = ulang misi)</td><td>Start</td><td>P / Esc (R = ulang misi)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="pauseScreen" class="overlay hidden">
+    <div class="card"><h2>Jeda</h2><p>Tekan Start / P untuk melanjutkan<br>Y = kembalikan trailer misi ke dock</p><p class="small">💾 Permainan tersimpan otomatis — aman untuk refresh / tutup browser.</p></div>
+  </div>
+
+  <div id="intro" aria-label="Intro permainan">
+    <div class="introBar top"></div><div class="introBar bot"></div>
+    <div id="introTitleBox">
+      <div class="introKicker">Pak Sopir · Trailer · Salatiga</div>
+      <div id="introTitle">LINTAS<br>SALATIGA</div>
+      <div id="introSub">Sopir Trailer · Dunia Terbuka Salatiga – Tengaran – Kopeng</div>
+    </div>
+    <div id="introCap"></div>
+    <div id="introDots"></div>
+    <div id="introSkip">Klik · Enter · A untuk lewati ▶▶</div>
+    <div id="introFade"></div>
+  </div>
+</div>
+<script>   // pengaman: bila game gagal dimuat, jangan biarkan layar intro menutup halaman
+setTimeout(function () { if (!window.__introRan) { document.body.classList.remove("intro-on"); document.getElementById("intro").classList.add("hidden"); } }, 12000);
+</script>
+<script>window.GAME_VERSION = "{{ version }}";</script>
+<script src="{{ url_for('static', filename='vehspecs.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='render3d.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='edu.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='fmx.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='game.js') }}?v={{ version }}"></script>
+</body>
+</html>

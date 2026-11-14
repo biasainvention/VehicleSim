@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Telemetri Kendaraan</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .visualizer-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 140px;
+            position: relative;
+        }
+
+        .compass-dial {
+            width: 100px;
+            height: 100px;
+            border: 3px solid var(--border-color);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle, #1e293b 57%, #0f172a 58%);
+        }
+
+        .compass-rose {
+            position: absolute;
+            inset: 0;
+            transition: transform 0.08s linear;
+        }
+
+        .compass-mark {
+            position: absolute;
+            left: 50%;
+            font-size: 0.72rem;
+            font-weight: bold;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+        }
+        .compass-mark.north { top: 5px; color: #f87171; }
+        .compass-mark.east { top: 50%; right: 6px; left: auto; transform: translateY(-50%); }
+        .compass-mark.south { bottom: 5px; }
+        .compass-mark.west { top: 50%; left: 6px; transform: translateY(-50%); }
+        .compass-pointer {
+            position: absolute;
+            z-index: 1;
+            top: 5px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 15px solid #f87171;
+            transform: translateX(-50%);
+            filter: drop-shadow(0 1px 2px #020617);
+        }
+        .horizon-wrap {
+            display: grid;
+            justify-items: center;
+            gap: 6px;
+        }
+        #artificial-horizon {
+            width: 180px;
+            height: 180px;
+            max-width: 100%;
+            border-radius: 50%;
+            background: #0f172a;
+        }
+
+        .steering-bar {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            height: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .steering-fill {
+            height: 100%;
+            width: 50%;
+            background-color: var(--accent-color);
+            position: absolute;
+            left: 50%;
+            transform-origin: left;
+            transition: transform 0.05s linear;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .status-ok { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .status-warn { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
+        .status-off { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+        .connection { margin-top: 12px; }
+        .card-wide { grid-column: 1 / -1; }
+        .packet {
+            max-height: 360px;
+            overflow: auto;
+            padding: 14px;
+            border-radius: 8px;
+            background: #080f1e;
+            color: #bae6fd;
+            font: 0.78rem/1.5 Consolas, monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .units { color: var(--text-muted); font-size: 0.8rem; }
+        .setting-row { margin: 16px 0; }
+        .setting-row label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; font-size: 0.9rem; }
+        .setting-row input { width: 100%; accent-color: var(--accent-color); }
+        .setting-actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+        .setting-actions button { padding: 9px 14px; border: 0; border-radius: 7px; background: var(--accent-color); color: #082f49; font-weight: 700; cursor: pointer; }
+        .setting-actions button:disabled { opacity: 0.55; cursor: wait; }
+        #suspension-status { min-height: 1.2em; }
+        .serial-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+        .serial-controls select { padding: 8px; border-radius: 7px; background: #0f172a; color: var(--text-color); border: 1px solid var(--border-color); }
+        .serial-controls button { padding: 9px 14px; border: 0; border-radius: 7px; background: var(--accent-color); color: #082f49; font-weight: 700; cursor: pointer; }
+        .serial-controls button:disabled { opacity: 0.55; cursor: wait; }
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .card { padding: 15px; }
+            .card-wide { grid-column: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DASHBOARD TELEMETRI KENDARAAN</h1>
+        <p>Stream real-time untuk monitoring dan motion rig · skala game 10 px = 1 m</p>
+        <div class="connection"><span id="connection" class="status-badge status-off">Menunggu game…</span>
+            <span id="val-rate" class="units">0 Hz</span></div>
+    </header>
+
+    <div class="container">
+        <!-- Posisi & Lokasi -->
+        <div class="card">
+            <h2>Posisi & Koordinat</h2>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <span class="metric-label">Koordinat X (m)</span>
+                    <span id="val-x" class="metric-value">0.0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Koordinat Y (m)</span>
+                    <span id="val-y" class="metric-value">0.0</span>
+                </div>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <span class="metric-label">Elevasi total (m)</span>
+                <span id="val-alt" class="metric-value" style="color: var(--accent-color);">0.0 m</span>
+            </div>
+        </div>
+
+        <!-- Dinamika & G-Force -->
+        <div class="card">
+            <h2>Dinamika & G-Force</h2>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <span class="metric-label">Kecepatan (Speed)</span>
+                    <span id="val-speed" class="metric-value">0 <small style="font-size:0.8rem">km/j</small></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">G-force resultant</span>
+                    <span id="val-gforce" class="metric-value">1.00 G</span>
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item"><span class="metric-label">Longitudinal / lateral</span><span id="val-glat" class="metric-value">0.00 / 0.00 G</span></div>
+                <div class="metric-item"><span class="metric-label">Vertical</span><span id="val-gvert" class="metric-value">1.00 G</span></div>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <span class="metric-label">Status Udara (Airborne)</span>
+                <div id="val-airborne" style="margin-top: 5px;"><span class="status-badge status-ok">Darat (Ground)</span></div>
+            </div>
+        </div>
+
+        <!-- Arah & Heading -->
+        <div class="card">
+            <h2>Arah & Heading</h2>
+            <div class="visualizer-container">
+                <div class="compass-dial">
+                    <div id="compass-rose" class="compass-rose">
+                        <span class="compass-mark north">N</span>
+                        <span class="compass-mark east">E</span>
+                        <span class="compass-mark south">S</span>
+                        <span class="compass-mark west">W</span>
+                    </div>
+                    <div class="compass-pointer" aria-hidden="true"></div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 5px;">
+                <span id="val-heading" class="metric-value" style="font-size: 1.1rem;">0°</span>
+            </div>
+            <div class="horizon-wrap">
+                <span class="metric-label">Artificial horizon · attitude pitch / roll</span>
+                <canvas id="artificial-horizon" width="360" height="360" aria-label="Artificial horizon attitude indicator"></canvas>
+                <span id="val-attitude" class="units">Pitch 0.0° · Roll 0.0° · Yaw 0.0°</span>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item"><span class="metric-label">Pitch command</span><span id="val-pitch" class="metric-value">0%</span></div>
+                <div class="metric-item"><span class="metric-label">Yaw rate</span><span id="val-yaw-rate" class="metric-value">0°/s</span></div>
+            </div>
+        </div>
+
+        <!-- Kendali (Steering & Banking) -->
+        <div class="card">
+            <h2>Kendali & Input</h2>
+            <div style="margin-bottom: 15px;">
+                <span class="metric-label">Sudut Setir (Steering Angle)</span>
+                <div class="steering-bar">
+                    <div id="steering-fill" class="steering-fill"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    <span>Kiri (-1)</span>
+                    <span>Pusat (0)</span>
+                    <span>Kanan (+1)</span>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <span class="metric-label">Kemiringan Bodi (Banking)</span>
+                <span id="val-bank" class="metric-value" style="font-size: 1.2rem;">0.0°</span>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item"><span class="metric-label">Akselerasi X / Y</span><span id="val-accel" class="metric-value">0.00 / 0.00</span><span class="units">m/s² world</span></div>
+                <div class="metric-item"><span class="metric-label">Input gas / rem</span><span id="val-throttle" class="metric-value">0 / 0%</span></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Pengaturan Suspensi</h2>
+            <p class="units">Atur respons suspensi kendaraan darat. Perubahan disimpan ke settings.json dan diterapkan ke tab game yang terbuka.</p>
+            <div class="setting-row">
+                <label for="suspension-stiffness"><span>Kekakuan / frekuensi alami (rad/s)</span><strong id="suspension-stiffness-value">15</strong></label>
+                <input id="suspension-stiffness" type="range" min="4" max="25" step="0.5" value="15" disabled>
+            </div>
+            <div class="setting-row">
+                <label for="suspension-damping"><span>Redaman (rasio)</span><strong id="suspension-damping-value">1.2</strong></label>
+                <input id="suspension-damping" type="range" min="0.3" max="2" step="0.1" value="1.2" disabled>
+            </div>
+            <div class="setting-row">
+                <label for="suspension-travel"><span>Jarak travel roda (cm)</span><strong id="suspension-travel-value">60</strong></label>
+                <input id="suspension-travel" type="range" min="0" max="100" step="5" value="60" disabled>
+            </div>
+            <div class="setting-row">
+                <label for="suspension-pitch-limit"><span>Batas pitch bodi (± derajat)</span><strong id="suspension-pitch-limit-value">7</strong></label>
+                <input id="suspension-pitch-limit" type="range" min="1" max="25" step="1" value="7" disabled>
+            </div>
+            <div class="setting-row">
+                <label for="suspension-roll-limit"><span>Batas roll bodi (± derajat)</span><strong id="suspension-roll-limit-value">13</strong></label>
+                <input id="suspension-roll-limit" type="range" min="1" max="30" step="1" value="13" disabled>
+            </div>
+            <div class="setting-actions">
+                <button id="save-suspension" type="button" disabled>Simpan pengaturan</button>
+                <span id="suspension-status" class="units" role="status">Memuat pengaturan…</span>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Koneksi ESP32 · USB Serial</h2>
+            <p class="units">Kirim setiap paket telemetry sebagai JSON satu baris (NDJSON), diakhiri newline. ESP32 harus memakai baud rate yang sama.</p>
+            <div class="serial-controls">
+                <label for="serial-baud" class="units">Baud rate</label>
+                <select id="serial-baud">
+                    <option value="2000000" selected>2.000.000 (maksimum)</option>
+                    <option value="1500000">1.500.000</option>
+                    <option value="1000000">1.000.000</option>
+                    <option value="921600">921.600</option>
+                    <option value="460800">460.800</option>
+                    <option value="115200">115.200</option>
+                </select>
+                <button id="serial-connect" type="button">Hubungkan ESP32</button>
+                <button id="serial-disconnect" type="button" disabled>Putuskan</button>
+            </div>
+            <p id="serial-status" class="units" role="status">Belum terhubung.</p>
+        </div>
+        <div class="card card-wide">
+            <h2>Packet motion rig · schema v<span id="schema-version">2</span></h2>
+            <div class="units">Posisi m · kecepatan m/s · akselerasi m/s² · sudut rad · G-force G · sumbu X/Y peta, Z atas. Legacy berisi koordinat game dalam px.</div>
+            <pre id="rig-packet" class="packet">Menunggu paket dari tab game…</pre>
+        </div>
+    </div>
+
+    <script>
+        const byId = (id) => document.getElementById(id);
+        const channel = typeof BroadcastChannel === 'function'
+            ? new BroadcastChannel('game_telemetry_channel') : null;
+        const suspensionChannel = typeof BroadcastChannel === 'function'
+            ? new BroadcastChannel('game_suspension_settings_channel') : null;
+        const serialConnectButton = byId('serial-connect');
+        const serialDisconnectButton = byId('serial-disconnect');
+        const serialStatus = byId('serial-status');
+        const serialEncoder = new TextEncoder();
+        let serialPort = null, serialWriter = null, serialWriteTask = null, pendingSerialPacket = null, serialDisconnecting = false;
+        let lastPacketAt = 0, streamActive = false, sampleCount = 0, lastRateAt = performance.now(), lastRenderAt = 0;
+        const setText = (id, value) => { byId(id).textContent = value; };
+        const fmt = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : '—';
+        const horizon = byId('artificial-horizon');
+        const horizonCtx = horizon.getContext('2d');
+
+        function setSerialStatus(message, isError = false) {
+            serialStatus.textContent = message;
+            serialStatus.style.color = isError ? 'var(--danger)' : '';
+        }
+
+        function updateSerialButtons() {
+            const connected = !!serialPort;
+            serialConnectButton.disabled = connected || serialDisconnecting;
+            serialDisconnectButton.disabled = !connected || serialDisconnecting;
+            byId('serial-baud').disabled = connected || serialDisconnecting;
+        }
+
+        async function connectSerial() {
+            if (!('serial' in navigator)) {
+                setSerialStatus('Web Serial tidak didukung. Gunakan Chrome/Edge melalui localhost atau HTTPS.', true);
+                return;
+            }
+            serialConnectButton.disabled = true;
+            setSerialStatus('Pilih port USB ESP32…');
+            let port, opened = false;
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: Number(byId('serial-baud').value) });
+                opened = true;
+                if (!port.writable) throw new Error('Port serial tidak menyediakan output.');
+                serialPort = port;
+                serialWriter = port.writable.getWriter();
+                updateSerialButtons();
+                setSerialStatus(`Terhubung · ${Number(byId('serial-baud').value).toLocaleString('id-ID')} baud · menunggu telemetry.`);
+            } catch (error) {
+                if (port && opened) {
+                    try { await port.close(); } catch (closeError) { console.error('Gagal menutup port serial:', closeError); }
+                }
+                updateSerialButtons();
+                if (error.name === 'NotFoundError') setSerialStatus('Pemilihan port dibatalkan.', true);
+                else setSerialStatus(`Gagal menghubungkan: ${error.message}`, true);
+            }
+        }
+
+        async function disconnectSerial(message = 'Koneksi ESP32 diputus.') {
+            serialDisconnecting = true;
+            updateSerialButtons();
+            try {
+                if (serialWriteTask) await serialWriteTask;
+                const writer = serialWriter, port = serialPort;
+                serialWriter = null;
+                serialPort = null;
+                pendingSerialPacket = null;
+                if (writer) writer.releaseLock();
+                if (port) await port.close();
+                setSerialStatus(message);
+            } catch (error) {
+                serialWriter = null;
+                serialPort = null;
+                setSerialStatus(`Gagal menutup koneksi serial: ${error.message}`, true);
+                console.error('Gagal menutup koneksi serial:', error);
+            } finally {
+                serialDisconnecting = false;
+                updateSerialButtons();
+            }
+        }
+
+        function queueSerialPacket(packet) {
+            if (!serialWriter || serialDisconnecting) return;
+            pendingSerialPacket = packet;
+            if (serialWriteTask) return;
+            serialWriteTask = (async () => {
+                try {
+                    while (serialWriter && pendingSerialPacket && !serialDisconnecting) {
+                        const writer = serialWriter;
+                        const nextPacket = pendingSerialPacket;
+                        pendingSerialPacket = null;
+                        await writer.write(serialEncoder.encode(`${JSON.stringify(nextPacket)}\n`));
+                        setSerialStatus(`Terhubung · seq ${nextPacket.sequence ?? '—'} terkirim.`);
+                    }
+                } catch (error) {
+                    console.error('Gagal mengirim telemetry ke ESP32:', error);
+                    const writer = serialWriter, port = serialPort;
+                    serialWriter = null;
+                    serialPort = null;
+                    pendingSerialPacket = null;
+                    if (writer) {
+                        try { writer.releaseLock(); } catch (releaseError) { console.error('Gagal melepas writer serial:', releaseError); }
+                    }
+                    if (port) {
+                        try { await port.close(); } catch (closeError) { console.error('Gagal menutup port serial:', closeError); }
+                    }
+                    setSerialStatus(`Pengiriman gagal: ${error.message}`, true);
+                    updateSerialButtons();
+                }
+            })().finally(() => {
+                serialWriteTask = null;
+                if (pendingSerialPacket && serialWriter && !serialDisconnecting) queueSerialPacket(pendingSerialPacket);
+            });
+        }
+
+        serialConnectButton.addEventListener('click', connectSerial);
+        serialDisconnectButton.addEventListener('click', () => disconnectSerial());
+        if ('serial' in navigator) {
+            navigator.serial.addEventListener('disconnect', ({ target }) => {
+                if (target === serialPort) disconnectSerial('Perangkat ESP32 terlepas.');
+            });
+        } else {
+            serialConnectButton.title = 'Web Serial memerlukan Chrome/Edge pada localhost atau HTTPS.';
+        }
+        const suspensionControls = {
+            stiffness: byId('suspension-stiffness'),
+            damping: byId('suspension-damping'),
+            travelCm: byId('suspension-travel'),
+            pitchLimitDeg: byId('suspension-pitch-limit'),
+            rollLimitDeg: byId('suspension-roll-limit')
+        };
+        const suspensionValueIds = {
+            stiffness: 'suspension-stiffness-value',
+            damping: 'suspension-damping-value',
+            travelCm: 'suspension-travel-value',
+            pitchLimitDeg: 'suspension-pitch-limit-value',
+            rollLimitDeg: 'suspension-roll-limit-value'
+        };
+
+        function showSuspensionValues() {
+            for (const [key, input] of Object.entries(suspensionControls)) {
+                setText(suspensionValueIds[key], input.value);
+            }
+        }
+
+        async function loadSuspensionSettings() {
+            const status = byId('suspension-status');
+            try {
+                const response = await fetch('/api/settings');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const settings = await response.json();
+                const suspension = settings.suspension || {};
+                for (const [key, input] of Object.entries(suspensionControls)) {
+                    if (Number.isFinite(suspension[key])) input.value = suspension[key];
+                    input.disabled = false;
+                }
+                byId('save-suspension').disabled = false;
+                showSuspensionValues();
+                status.textContent = 'Pengaturan dimuat.';
+            } catch (error) {
+                status.textContent = `Gagal memuat: ${error.message}`;
+                status.style.color = 'var(--danger)';
+            }
+        }
+
+        for (const input of Object.values(suspensionControls)) {
+            input.addEventListener('input', showSuspensionValues);
+        }
+        byId('save-suspension').addEventListener('click', async () => {
+            const button = byId('save-suspension'), status = byId('suspension-status');
+            const settings = Object.fromEntries(
+                Object.entries(suspensionControls).map(([key, input]) => [key, Number(input.value)])
+            );
+            button.disabled = true;
+            status.style.color = '';
+            status.textContent = 'Menyimpan…';
+            try {
+                const response = await fetch('/api/settings/suspension', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ suspension: settings })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+                if (suspensionChannel) {
+                    suspensionChannel.postMessage({ type: 'suspension-settings', settings: result.suspension });
+                }
+                status.textContent = 'Tersimpan dan diterapkan ke game.';
+            } catch (error) {
+                status.textContent = `Gagal menyimpan: ${error.message}`;
+                status.style.color = 'var(--danger)';
+            } finally {
+                button.disabled = false;
+            }
+        });
+        loadSuspensionSettings();
+
+        function drawHorizon(pitch, roll) {
+            const ctx = horizonCtx, size = horizon.width, center = size / 2, radius = center - 5;
+            const pxPerRad = size / (Math.PI * 2);
+            ctx.clearRect(0, 0, size, size);
+            ctx.save();
+            ctx.translate(center, center);
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.rotate(-roll);
+            const horizonY = pitch * pxPerRad;
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(-size, -size + horizonY, size * 2, size);
+            ctx.fillStyle = '#8b5e3c';
+            ctx.fillRect(-size, horizonY, size * 2, size);
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-size, horizonY);
+            ctx.lineTo(size, horizonY);
+            ctx.stroke();
+            ctx.font = 'bold 15px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let degrees = -30; degrees <= 30; degrees += 10) {
+                if (!degrees) continue;
+                const y = horizonY - degrees * Math.PI / 180 * pxPerRad;
+                const width = degrees % 20 === 0 ? 76 : 48;
+                ctx.beginPath();
+                ctx.moveTo(-width / 2, y);
+                ctx.lineTo(width / 2, y);
+                ctx.stroke();
+                if (width > 50) {
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillText(String(Math.abs(degrees)), -width / 2 - 15, y);
+                    ctx.fillText(String(Math.abs(degrees)), width / 2 + 15, y);
+                }
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(center, center);
+            ctx.strokeStyle = '#f8fafc';
+            ctx.fillStyle = '#f8fafc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius - 7, -Math.PI * 0.78, -Math.PI * 0.22);
+            ctx.stroke();
+            for (let degrees = -60; degrees <= 60; degrees += 10) {
+                const angle = degrees * Math.PI / 180 - Math.PI / 2;
+                const inner = radius - (degrees % 30 === 0 ? 17 : 12);
+                const outer = radius - 5;
+                ctx.lineWidth = degrees % 30 === 0 ? 3 : 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+                ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(-42, 0); ctx.lineTo(-12, 0);
+            ctx.moveTo(12, 0); ctx.lineTo(42, 0);
+            ctx.moveTo(-12, 0); ctx.lineTo(0, 9); ctx.lineTo(12, 0);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (!channel) {
+            setText('connection', 'BroadcastChannel tidak didukung browser');
+        } else {
+            channel.onmessage = ({ data }) => {
+                if (!data || data.schemaVersion !== 2) return;
+                queueSerialPacket(data);
+                lastPacketAt = performance.now();
+                if (!data.active) {
+                    streamActive = false;
+                    setText('connection', 'Game terbuka · tidak sedang mengemudi');
+                    byId('connection').className = 'status-badge status-off';
+                    setText('rig-packet', JSON.stringify(data, null, 2));
+                    return;
+                }
+                streamActive = true;
+                sampleCount++;
+                if (performance.now() - lastRenderAt < 50) return;
+                lastRenderAt = performance.now();
+                updateDashboard(data);
+            };
+            setInterval(() => {
+                const now = performance.now();
+                if (now - lastRateAt >= 1000) {
+                    setText('val-rate', `${Math.round(sampleCount * 1000 / (now - lastRateAt))} Hz`);
+                    sampleCount = 0;
+                    lastRateAt = now;
+                }
+                if (streamActive && lastPacketAt && now - lastPacketAt > 1500) {
+                    streamActive = false;
+                    setText('connection', 'Stream terputus / stale');
+                    byId('connection').className = 'status-badge status-off';
+                }
+            }, 500);
+        }
+
+        function updateDashboard(d) {
+            const p = d.position, v = d.velocity, a = d.acceleration, o = d.attitude || d.orientation, gf = d.gForce, c = d.controls;
+            setText('connection', `${d.vehicle.name} · ${d.vehicle.type} · ${d.vehicle.gear} · seq ${d.sequence}`);
+            byId('connection').className = 'status-badge status-ok';
+            setText('val-x', fmt(p.x, 1));
+            setText('val-y', fmt(p.y, 1));
+            setText('val-alt', `${fmt(p.z, 1)} m`);
+            setText('val-speed', `${fmt(v.speedKmh, 0)} km/j`);
+            setText('val-gforce', `${fmt(gf.resultant)} G`);
+            setText('val-glat', `${fmt(gf.longitudinal)} / ${fmt(gf.lateral)} G`);
+            setText('val-gvert', `${fmt(gf.vertical)} G`);
+            setText('val-airborne', d.airborne ? 'Terbang (Airborne)' : 'Darat (Ground)');
+            byId('val-airborne').className = `status-badge ${d.airborne ? 'status-warn' : 'status-ok'}`;
+            const headingDeg = (o.yawRad * 180 / Math.PI + 90 + 360) % 360;
+            byId('compass-rose').style.transform = `rotate(${-headingDeg}deg)`;
+            setText('val-heading', `${Math.round(headingDeg)}°`);
+            setText('val-pitch', `${fmt(o.pitchCommand * 100, 0)}%`);
+            setText('val-yaw-rate', `${fmt(d.angularVelocity.yawRadPerSec * 180 / Math.PI, 1)}°/s`);
+            setText('val-bank', `${fmt(o.rollRad * 180 / Math.PI, 1)}°`);
+            drawHorizon(o.pitchRad, o.rollRad);
+            const attitude = d.attitude;
+            const pitchText = attitude && attitude.pitchSource === 'not_simulated'
+                ? 'Pitch n/a'
+                : `Pitch ${attitude && attitude.pitchSource === 'estimated_from_command' ? '≈' : ''}${fmt(o.pitchRad * 180 / Math.PI, 1)}°`;
+            const yawDeg = attitude && Number.isFinite(attitude.yawDeg) ? attitude.yawDeg : o.yawRad * 180 / Math.PI;
+            setText('val-attitude', `${pitchText} · Roll ${fmt(o.rollRad * 180 / Math.PI, 1)}° · Yaw ${fmt(yawDeg, 1)}°`);
+            setText('val-accel', `${fmt(a.x)} / ${fmt(a.y)}`);
+            setText('val-throttle', `${fmt(c.throttle * 100, 0)} / ${fmt(c.brake * 100, 0)}%`);
+            const fill = byId('steering-fill'), steer = Math.max(-1, Math.min(1, c.steering));
+            fill.style.left = steer < 0 ? `${50 + steer * 50}%` : '50%';
+            fill.style.transform = `scaleX(${Math.abs(steer)})`;
+            fill.style.backgroundColor = steer < 0 ? 'var(--warning)' : 'var(--accent-color)';
+            setText('schema-version', d.schemaVersion);
+            setText('rig-packet', JSON.stringify(d, null, 2));
+        }
+    </script>
+</body>
+</html>
